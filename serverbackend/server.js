@@ -15,6 +15,10 @@ import adminRoutes from "./routes/admin.routes.js";
 import stupasswordchange from "./routes/stuchangepass.routes.js";
 import messFeeRoutes from "./routes/messFeeRoutes.js";
 import canteenFeeRoutes from "./routes/canteenFeeRoutes.js";
+import adminsettingRoutes from "./routes/adminsettingRoutes.js";
+import workerRoutes from "./routes/worker.routes.js";
+import attendanceRoutes from "./routes/attendance.routes.js";
+import functionRoutes from "./routes/function.routes.js";
 
 dotenv.config();
 
@@ -48,6 +52,10 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/stuchangepass", stupasswordchange);
 app.use("/api", messFeeRoutes);
 app.use("/api", canteenFeeRoutes);   // /api/canteen-fees
+app.use("/api", adminsettingRoutes);
+app.use("/api/workers", workerRoutes);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/functions", functionRoutes);
 
 // MongoDB Connection
 mongoose

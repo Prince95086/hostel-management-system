@@ -38,6 +38,12 @@ import Studendatashow from "./admindash/Studentdatashow";
 import Studentdatashow from "./admindash/Studentdatashow";
 import MessFeeStudent from "./studentdash/MessFeeStudent";
 import CanteenFeeStudent from "./studentdash/CanteenFeeStudent";
+import SettingAdmin from "./admindash/SettingAdmin";
+import AttendanceWorker from "./admindash/AttendanceWorker";
+import TotalAttendance from "./admindash/TotalAttendance";
+import AdminLayout from "./admindash/ReportAdmin";
+import AdminFunction from "./admindash/AdminFunction";
+import FunctionList from "./studentdash/FunctionList";
 
 
 
@@ -79,11 +85,17 @@ function App() {
         <Route path="/messfee-record" element={<MessFeeRecord/>} />
         <Route path="/admin-dashbord" element={<Dashbord/>} />
         <Route path="/admin/canteen-fee" element={<CanteenFeeRecord/>} />
-        <Route path="/admin/attendance" element={<Studentdatashow/>} />
         <Route path="/mess-fee" element={<MessFeeStudent/>} />
         <Route path="/canteen-fee" element={<CanteenFeeStudent/>} />
-      
+        <Route path="/admin/settings" element={<SettingAdmin/>} />
+        <Route path="/admin/attendance" element={<AttendanceWorker/>} />
+        <Route path="/admin/total-attendance" element={<TotalAttendance/>} />
+        <Route path="/admin/report-student" element={<AdminLayout/>} />
+        <Route path="/admin/function" element={<AdminFunction/>} />
+        <Route path="/admin/total-complaint" element={<FunctionList/>} />
+
         
+       
          
       </Routes>
     </Router>

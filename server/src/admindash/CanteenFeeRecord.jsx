@@ -30,7 +30,8 @@ import {
   FaWallet,
   FaUniversity,
   FaFileInvoice,
-  FaRupeeSign
+  FaRupeeSign,
+  FaPhone
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import { GiGraduateCap } from "react-icons/gi";
@@ -66,7 +67,8 @@ export default function CanteenFeeRecord() {
     paymentMethod: "Cash",
     status: "Pending",
     receiptNo: "",
-    remarks: ""
+    remarks: "",
+    studentPhone: ""
   });
 
   const [paymentForm, setPaymentForm] = useState({
@@ -169,7 +171,8 @@ export default function CanteenFeeRecord() {
               paymentDate: "2024-01-05",
               paymentMethod: "Online",
               status: "Paid",
-              receiptNo: "REC001"
+              receiptNo: "REC001",
+              studentPhone: "9876543210"
             },
             {
               _id: "2",
@@ -181,7 +184,8 @@ export default function CanteenFeeRecord() {
               paymentDate: "",
               paymentMethod: "",
               status: "Pending",
-              receiptNo: ""
+              receiptNo: "",
+              studentPhone: "9876543210"
             },
             {
               _id: "3",
@@ -193,7 +197,8 @@ export default function CanteenFeeRecord() {
               paymentDate: "2024-03-10",
               paymentMethod: "Cash",
               status: "Partial",
-              receiptNo: "REC003"
+              receiptNo: "REC003",
+              studentPhone: "9876543210"
             },
           ];
           setStudentCanteenFeeData(mockCanteenFeeData);
@@ -215,7 +220,7 @@ export default function CanteenFeeRecord() {
   const handleAddCanteenFeeRecord = () => {
     setShowAddForm(true);
     setShowPaymentSummary(false);
-    // Reset form data
+    // Reset form data with phone number
     setFormData({
       month: "",
       year: new Date().getFullYear(),
@@ -226,7 +231,8 @@ export default function CanteenFeeRecord() {
       paymentMethod: "Cash",
       status: "Pending",
       receiptNo: "",
-      remarks: ""
+      remarks: "",
+      studentPhone: studentInfo?.phone || studentInfo?.phoneNo || "" // Initialize with phone number
     });
   };
 
@@ -295,7 +301,8 @@ export default function CanteenFeeRecord() {
       paymentMethod: paymentForm.paymentMethod,
       receiptNo: receiptNo,
       remarks: paymentForm.remarks,
-      studentId: selectedStudent // Ensure studentId is included
+      studentId: selectedStudent, // Ensure studentId is included
+      studentPhone: studentInfo?.phone || studentInfo?.phoneNo || "" // Add phone number
     };
     
     setProcessingPayment(true);
@@ -351,7 +358,8 @@ export default function CanteenFeeRecord() {
       paymentMethod: record.paymentMethod || "Cash",
       status: record.status || "Pending",
       receiptNo: record.receiptNo || "",
-      remarks: record.remarks || ""
+      remarks: record.remarks || "",
+      studentPhone: record.studentPhone || studentInfo?.phone || studentInfo?.phoneNo || "" // Add phone number
     });
     setShowAddForm(true);
     setShowPaymentSummary(false);
@@ -378,6 +386,11 @@ export default function CanteenFeeRecord() {
     
     const finalFormData = { ...formData };
     finalFormData.studentId = selectedStudent;
+    
+    // Add phone number automatically from studentInfo
+    if (selectedStudent && studentInfo) {
+      finalFormData.studentPhone = studentInfo.phone || studentInfo.phoneNo || "";
+    }
     
     setSaving(true);
     try {
@@ -414,7 +427,8 @@ export default function CanteenFeeRecord() {
         paymentMethod: "Cash",
         status: "Pending",
         receiptNo: "",
-        remarks: ""
+        remarks: "",
+        studentPhone: ""
       });
     } catch (error) {
       console.error("Failed to save canteen fee record", error);
@@ -501,6 +515,12 @@ export default function CanteenFeeRecord() {
     }
     
     const finalFormData = { ...formData };
+    
+    // Add phone number automatically from studentInfo
+    if (selectedStudent && studentInfo) {
+      finalFormData.studentPhone = studentInfo.phone || studentInfo.phoneNo || "";
+    }
+    
     if ((formData.status === "Paid" || formData.status === "Partial") && !formData.receiptNo) {
       finalFormData.receiptNo = generateReceiptNumber();
     }
@@ -528,7 +548,8 @@ export default function CanteenFeeRecord() {
         paymentMethod: "Cash",
         status: "Pending",
         receiptNo: "",
-        remarks: ""
+        remarks: "",
+        studentPhone: ""
       });
     } catch (error) {
       console.error("Failed to add canteen fee record", error);
@@ -611,6 +632,8 @@ export default function CanteenFeeRecord() {
             </div>
             <p className="text-gray-600 mt-2">
               Student: <span className="font-semibold">{studentInfo?.name}</span>
+              <br />
+              Phone: <span className="font-semibold">{studentInfo?.phone || studentInfo?.phoneNo || "N/A"}</span>
             </p>
           </div>
 
@@ -826,7 +849,8 @@ export default function CanteenFeeRecord() {
                 paymentMethod: "Cash",
                 status: "Pending",
                 receiptNo: "",
-                remarks: ""
+                remarks: "",
+                studentPhone: ""
               });
             }}
             className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
@@ -837,6 +861,21 @@ export default function CanteenFeeRecord() {
 
         <form onSubmit={selectedRecord ? handleUpdateCanteenFeeRecord : handleFormSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Student Phone Number (Read-only) */}
+            <div className="space-y-2 md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">
+                <FaPhone className="inline mr-2" />
+                Student Phone Number (Auto-filled)
+              </label>
+              <input
+                type="text"
+                value={studentInfo?.phone || studentInfo?.phoneNo || "N/A"}
+                readOnly
+                className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700"
+              />
+              <p className="text-xs text-gray-500">This will be automatically saved with the record</p>
+            </div>
+
             {/* Month and Year */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
@@ -1041,7 +1080,8 @@ export default function CanteenFeeRecord() {
                   paymentMethod: "Cash",
                   status: "Pending",
                   receiptNo: "",
-                  remarks: ""
+                  remarks: "",
+                  studentPhone: ""
                 });
               }}
               className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
@@ -1139,6 +1179,7 @@ export default function CanteenFeeRecord() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="py-3 px-4 text-left">Month/Year</th>
+                    <th className="py-3 px-4 text-left">Phone</th>
                     <th className="py-3 px-4 text-left">Total Amount</th>
                     <th className="py-3 px-4 text-left">Paid Amount</th>
                     <th className="py-3 px-4 text-left">Due Amount</th>
@@ -1151,6 +1192,11 @@ export default function CanteenFeeRecord() {
                     <tr key={record._id} className="border-t hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div className="font-medium">{record.month || "Unknown Month"}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="text-gray-600">
+                          {record.studentPhone || "N/A"}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="font-bold">₹{record.totalAmount?.toLocaleString() || "0"}</div>
@@ -1292,7 +1338,7 @@ export default function CanteenFeeRecord() {
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
-              placeholder="Search students by name, room, or roll no..." 
+              placeholder="Search students by name, phone, room, or roll no..." 
               className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -1356,6 +1402,8 @@ export default function CanteenFeeRecord() {
                       const term = searchTerm.toLowerCase();
                       return (
                         (student.name && student.name.toLowerCase().includes(term)) ||
+                        (student.phone && student.phone.toLowerCase().includes(term)) ||
+                        (student.phoneNo && student.phoneNo.toLowerCase().includes(term)) ||
                         (student.roomNo && student.roomNo.toString().includes(term)) ||
                         (student.rollNo && student.rollNo.toString().includes(term))
                       );
@@ -1425,6 +1473,8 @@ export default function CanteenFeeRecord() {
                   const term = searchTerm.toLowerCase();
                   return (
                     (student.name && student.name.toLowerCase().includes(term)) ||
+                    (student.phone && student.phone.toLowerCase().includes(term)) ||
+                    (student.phoneNo && student.phoneNo.toLowerCase().includes(term)) ||
                     (student.roomNo && student.roomNo.toString().includes(term)) ||
                     (student.rollNo && student.rollNo.toString().includes(term))
                   );
@@ -1633,6 +1683,7 @@ export default function CanteenFeeRecord() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="py-3 px-4 text-left">Month/Year</th>
+                  <th className="py-3 px-4 text-left">Phone</th>
                   <th className="py-3 px-4 text-left">Total Amount</th>
                   <th className="py-3 px-4 text-left">Paid Amount</th>
                   <th className="py-3 px-4 text-left">Due Amount</th>
@@ -1648,6 +1699,11 @@ export default function CanteenFeeRecord() {
                     <tr key={record._id} className="border-t hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div className="font-medium">{record.month || "Unknown Month"}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="text-gray-600">
+                          {record.studentPhone || "N/A"}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="font-bold">₹{record.totalAmount?.toLocaleString() || "0"}</div>
@@ -1712,7 +1768,7 @@ export default function CanteenFeeRecord() {
                             <button 
                               onClick={() => {
                                 // View receipt functionality
-                                alert(`Receipt Number: ${record.receiptNo}\nAmount: ₹${record.paidAmount}\nDate: ${record.paymentDate}`);
+                                alert(`Receipt Number: ${record.receiptNo}\nAmount: ₹${record.paidAmount}\nDate: ${record.paymentDate}\nPhone: ${record.studentPhone}`);
                               }}
                               className="p-2 bg-purple-100 text-purple-600 rounded hover:bg-purple-200" 
                               title="View Receipt"
@@ -1726,7 +1782,7 @@ export default function CanteenFeeRecord() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-gray-500">
+                    <td colSpan="9" className="py-8 text-center text-gray-500">
                       No canteen fee records found for this student
                     </td>
                   </tr>

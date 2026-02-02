@@ -27,7 +27,7 @@ export default function Setting() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeMenu, setActiveMenu] = useState("My Account");
+  const [activeMenu, setActiveMenu] = useState("Setting"); // Changed to "Setting"
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -44,15 +44,15 @@ export default function Setting() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* ---------- SIDEBAR MENU (Setting INCLUDED in sidebar) ---------- */
+  /* ---------- SIDEBAR MENU ---------- */
   const menuItems = [
     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/my-fake-profile" },
+    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" }, // Fixed path
     { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
-    { label: "Canteen Fee", icon: <FaCoffee />, path: "/admin/canteen-fee" },
-    { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
-    { label: "Total Complain", icon: <FaClipboardList />, path: "/admin/total-complaint" },
-    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
+    { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
+    { label: "Reports", icon: <FaChartLine />, path: "/reports" }, // Removed /admin prefix
+    { label: "Function", icon: <FaClipboardList />, path: "#" }, // Changed to "#"
+    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" }, // Removed /admin prefix
     { label: "Setting", icon: <FaCog />, path: "/student-setting" },
   ];
 
@@ -80,8 +80,18 @@ export default function Setting() {
 
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);
-    navigate(path);
-    if (isMobile) setSidebarOpen(false);
+    
+    // Don't navigate for Function button (it's always shown)
+    if (label === "Function") {
+      if (isMobile) setSidebarOpen(false);
+      return;
+    }
+    
+    // Navigate for other buttons
+    if (path && path !== "#") {
+      navigate(path);
+      if (isMobile) setSidebarOpen(false);
+    }
   };
 
   // Handle password change
@@ -387,7 +397,14 @@ export default function Setting() {
                   <button
                     type="button"
                     className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors"
-                    onClick={handleLogout}
+                    onClick={() => {
+                      localStorage.removeItem("studentToken");
+                      localStorage.removeItem("token");
+                      sessionStorage.removeItem("token");
+                      localStorage.removeItem("student");
+                      setDropdownOpen(false);
+                      navigate("/");
+                    }}
                   >
                     <FaSignOutAlt className="inline mr-2" />
                     Logout

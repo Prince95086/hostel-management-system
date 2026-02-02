@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   FaUserCircle,
   FaClipboardList,
@@ -30,9 +30,11 @@ export default function MyAccount() {
   const [activeMenu, setActiveMenu] = useState("My Account");
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   /* ---------- RESPONSIVE ---------- */
   useEffect(() => {
@@ -46,65 +48,90 @@ export default function MyAccount() {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  /* ---------- FETCH STUDENT DATA ---------- */
+  /* ---------- FETCH STUDENT DATA (Only on initial load) ---------- */
   useEffect(() => {
-  const fetchStudent = async () => {
-    try {
-      setLoading(true);
-
-      const token =
-        localStorage.getItem("token") || sessionStorage.getItem("token");
-
-      if (!token) {
-        navigate("/signin-options");
-        return;
-      }
-
-      const res = await fetch(
-        "http://localhost:5000/api/myaccount/my-account", // ✅ FIXED ROUTE
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+    const fetchStudent = async () => {
+      try {
+        // Check if we already have data in localStorage
+        const savedStudent = localStorage.getItem("student");
+        if (savedStudent && !initialLoadComplete) {
+          setStudentData(JSON.parse(savedStudent));
+          setLoading(false);
+          setInitialLoadComplete(true);
+          return;
         }
-      );
 
-      if (!res.ok) throw new Error("Failed to fetch");
+        setLoading(true);
 
-      const data = await res.json();
-      console.log("Student API DATA →", data);
+        const token =
+          localStorage.getItem("token") || sessionStorage.getItem("token");
 
-      setStudentData(data);
-      localStorage.setItem("student", JSON.stringify(data));
-    } catch (err) {
-      console.error(err);
-      navigate("/signin-options");
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (!token) {
+          navigate("/signin-options");
+          return;
+        }
 
-  fetchStudent();
-}, [navigate]);
+        const res = await fetch(
+          "http://localhost:5000/api/myaccount/my-account",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
+        if (!res.ok) throw new Error("Failed to fetch");
+
+        const data = await res.json();
+        console.log("Student API DATA →", data);
+
+        setStudentData(data);
+        localStorage.setItem("student", JSON.stringify(data));
+        setInitialLoadComplete(true);
+      } catch (err) {
+        console.error(err);
+        navigate("/signin-options");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudent();
+  }, [navigate, initialLoadComplete]);
 
   /* ---------- SIDEBAR MENU ---------- */
   const menuItems = [
-     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-        { label: "Pay Fee", icon: <FaRupeeSign />, path: "/my-fake-profile" },
-        { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
-        { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-        { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
-        { label: "Total Complain", icon: <FaClipboardList />, path: "/admin/total-complaint" },
-        { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
-        { label: "Setting", icon: <FaCog />, path: "/student-setting" },
+    { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
+    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" }, // Fixed path
+    { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
+    { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
+    { label: "Reports", icon: <FaChartLine />, path: "/reports" }, // Removed /admin prefix
+    { label: "Function", icon: <FaClipboardList />, path: "#" }, // Changed to #
+    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" }, // Removed /admin prefix
+    { label: "Setting", icon: <FaCog />, path: "/student-setting" },
   ];
 
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);
+    
+    // Special handling for Function button
+    if (label === "Function") {
+      if (isMobile) setSidebarOpen(false);
+      return;
+    }
+    
     navigate(path);
     if (isMobile) setSidebarOpen(false);
   };
+
+  // Set active menu based on current path
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const currentMenuItem = menuItems.find(item => item.path === currentPath);
+    if (currentMenuItem) {
+      setActiveMenu(currentMenuItem.label);
+    }
+  }, [location.pathname]);
 
   // Auto-close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -135,8 +162,8 @@ export default function MyAccount() {
     navigate("/signin-options");
   };
 
-  // Show loading state
-  if (loading) {
+  // Show loading state only on initial load
+  if (loading && !initialLoadComplete) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100">
         <div className="text-center">
@@ -147,43 +174,20 @@ export default function MyAccount() {
     );
   }
 
-  // Show error state if no data
-  if (!studentData) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FaUserCircle className="text-red-500 text-3xl" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-800">No Student Data Found</h2>
-          <p className="text-gray-600 mt-2">Please login again</p>
-          <button 
-            onClick={() => navigate("/signin-options")}
-            className="mt-4 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // Format data for display
- const displayData = {
-  name: studentData?.name ?? "N/A",
-  email: studentData?.email ?? "N/A",
-  phone: studentData?.phone ?? "N/A",
-  rollNo: studentData?.rollNo ?? "N/A",
-  year: studentData?.year ?? "N/A",
-  department: studentData?.dept ?? "N/A",   // backend field
-  branch: studentData?.branch ?? "N/A",
-  category: studentData?.category ?? "N/A",
-  hostel: studentData?.hostel ?? "N/A",
-  block: studentData?.block ?? "N/A",
-  roomNo: studentData?.roomNo ?? "N/A",
-};
-
-
+  const displayData = {
+    name: studentData?.name ?? "N/A",
+    email: studentData?.email ?? "N/A",
+    phone: studentData?.phone ?? "N/A",
+    rollNo: studentData?.rollNo ?? "N/A",
+    year: studentData?.year ?? "N/A",
+    department: studentData?.dept ?? "N/A",   // backend field
+    branch: studentData?.branch ?? "N/A",
+    category: studentData?.category ?? "N/A",
+    hostel: studentData?.hostel ?? "N/A",
+    block: studentData?.block ?? "N/A",
+    roomNo: studentData?.roomNo ?? "N/A",
+  };
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -275,7 +279,7 @@ export default function MyAccount() {
                     className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors border-b border-gray-100"
                     onClick={() => {
                       setDropdownOpen(false);
-                      navigate("/settings");
+                      navigate("/student-setting"); // Fixed path
                     }}
                   >
                     Settings
@@ -376,7 +380,7 @@ export default function MyAccount() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Hostel</p>
-                      <p className="font-semibold text-gray-800">{displayData.hostel} </p>
+                      <p className="font-semibold text-gray-800">{displayData.hostel}</p>
                     </div>
                   </div>
                 </div>
@@ -516,7 +520,7 @@ export default function MyAccount() {
               </div>
               <div className="flex space-x-4">
                 <button
-                  onClick={() => navigate("/settings")}
+                  onClick={() => navigate("/student-setting")} // Fixed path
                   className="px-6 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 transition-colors flex items-center gap-2"
                 >
                   <FaCog />

@@ -57,16 +57,17 @@ export default function MessFeeStudent() {
   }, []);
 
   /* ---------- SIDEBAR MENU ---------- */
-  const menuItems = [
-    { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
-    { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
-    { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-    { label: "Reports", icon: <FaChartLine />, path: "/reports" },
-    { label: "Total Complain", icon: <FaClipboardList />, path: "/total-complaint" },
-    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" },
-    { label: "Setting", icon: <FaCog />, path: "/student-setting" },
-  ];
+   /* ---------- SIDEBAR MENU (Exactly as per your screenshot) ---------- */
+    const menuItems = [
+      { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
+      { label: "Pay Fee", icon: <FaRupeeSign />, path: "/my-fake-profile" },
+      { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
+      { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
+      { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
+      { label: "Function", icon: <FaClipboardList />, path: "/admin/total-complaint" },
+      { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
+      { label: "Setting", icon: <FaCog />, path: "/student-setting" },
+    ];
 
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);

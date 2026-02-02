@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   FaUserCircle,
   FaUsers,
@@ -23,13 +23,14 @@ import {
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
 
-export default function AdminLayout() {
+export default function StudentLayout() { // Changed from AdminLayout to StudentLayout
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeMenu, setActiveMenu] = useState("My Account");
 
   const navigate = useNavigate();
+  const location = useLocation(); // Added to track current location
 
   /* ---------- RESPONSIVE ---------- */
   useEffect(() => {
@@ -42,15 +43,15 @@ export default function AdminLayout() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* ---------- SIDEBAR MENU (Exactly as per your screenshot) ---------- */
+  /* ---------- SIDEBAR MENU ---------- */
   const menuItems = [
     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/my-fake-profile" },
+    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" }, // Fixed path
     { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
     { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-    { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
-    { label: "Total Complain", icon: <FaClipboardList />, path: "/admin/total-complaint" },
-    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
+    { label: "Reports", icon: <FaChartLine />, path: "/reports" }, // Removed /admin prefix
+    { label: "Function", icon: <FaClipboardList />, path: "/total-complaint" }, // Removed /admin prefix
+    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" }, // Removed /admin prefix
     { label: "Setting", icon: <FaCog />, path: "/student-setting" },
   ];
 
@@ -77,6 +78,15 @@ export default function AdminLayout() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [sidebarOpen, isMobile]);
+
+  // Set active menu based on current path
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const currentMenuItem = menuItems.find(item => item.path === currentPath);
+    if (currentMenuItem) {
+      setActiveMenu(currentMenuItem.label);
+    }
+  }, [location.pathname]);
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -152,41 +162,40 @@ export default function AdminLayout() {
 
               {dropdownOpen && (
                <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-48 py-2 z-50">
-  <button
-    type="button"
-    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
-    onClick={() => {
-      setDropdownOpen(false);
-      navigate("/my-account");
-    }}
-  >
-    Profile
-  </button>
+                  <button
+                    type="button"
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      navigate("/my-account");
+                    }}
+                  >
+                    Profile
+                  </button>
 
-  <button
-    type="button"
-    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
-    onClick={() => {
-      setDropdownOpen(false);
-      navigate("/settings");
-    }}
-  >
-    Settings
-  </button>
+                  <button
+                    type="button"
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      navigate("/student-setting");
+                    }}
+                  >
+                    Settings
+                  </button>
 
-  <button
-    type="button"
-    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors"
-    onClick={() => {
-      localStorage.removeItem("adminToken");
-      setDropdownOpen(false);
-      navigate("/");
-    }}
-  >
-    Logout
-  </button>
-</div>
-
+                  <button
+                    type="button"
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors"
+                    onClick={() => {
+                      localStorage.removeItem("studentToken"); // Changed from adminToken to studentToken
+                      setDropdownOpen(false);
+                      navigate("/");
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
               )}
             </div>
           </div>

@@ -10,13 +10,38 @@ const generateReceiptNumber = () => {
   return `REC${y}${m}${d}${r}`;
 };
 
+/* ================= PHONE CLEAN + VALIDATE ================= */
+const cleanPhone = (phone) => {
+  if (!phone) return "";
+  phone = phone.toString().replace(/[^0-9]/g, "");
+  if (phone.startsWith("91") && phone.length === 12) {
+    phone = phone.slice(2);
+  }
+  return phone;
+};
+
+const isValidPhone = (phone) => /^[6-9]\d{9}$/.test(phone);
+
 /* ================= SAVE NEW CANTEEN FEE RECORD ================= */
 export const createCanteenFee = async (req, res) => {
   try {
-    let { totalAmount = 0, paidAmount = 0, receiptNo } = req.body;
+    let {
+      totalAmount = 0,
+      paidAmount = 0,
+      receiptNo,
+      phoneNumber,
+      studentPhone, // 👈 accept old field
+    } = req.body;
 
     totalAmount = Number(totalAmount);
     paidAmount = Number(paidAmount);
+
+    // Accept either name
+    phoneNumber = cleanPhone(phoneNumber || studentPhone);
+
+    if (!isValidPhone(phoneNumber)) {
+      return res.status(400).json({ message: "Invalid phone number" });
+    }
 
     if (paidAmount > totalAmount) {
       return res.status(400).json({
@@ -36,6 +61,7 @@ export const createCanteenFee = async (req, res) => {
 
     const newRecord = new CanteenFee({
       ...req.body,
+      phoneNumber, // always save under correct name
       totalAmount,
       paidAmount,
       dueAmount,
@@ -60,11 +86,9 @@ export const getMyCanteenFees = async (req, res) => {
 
     res.json(records);
   } catch (error) {
-    console.error("Fetch my fees error:", error);
     res.status(500).json({ message: "Error fetching your canteen fee data" });
   }
 };
-
 
 /* ================= GET STUDENT CANTEEN FEES ================= */
 export const getStudentCanteenFees = async (req, res) => {
@@ -82,10 +106,16 @@ export const getStudentCanteenFees = async (req, res) => {
 export const updateCanteenFee = async (req, res) => {
   try {
     const { id } = req.params;
-    let { totalAmount, paidAmount, receiptNo } = req.body;
+    let { totalAmount, paidAmount, receiptNo, phoneNumber, studentPhone } = req.body;
 
     totalAmount = Number(totalAmount);
     paidAmount = Number(paidAmount);
+
+    phoneNumber = cleanPhone(phoneNumber || studentPhone);
+
+    if (!isValidPhone(phoneNumber)) {
+      return res.status(400).json({ message: "Invalid phone number" });
+    }
 
     if (paidAmount > totalAmount) {
       return res.status(400).json({
@@ -105,8 +135,8 @@ export const updateCanteenFee = async (req, res) => {
 
     const updated = await CanteenFee.findByIdAndUpdate(
       id,
-      { ...req.body, totalAmount, paidAmount, dueAmount, status, receiptNo },
-      { new: true }
+      { ...req.body, phoneNumber, totalAmount, paidAmount, dueAmount, status, receiptNo },
+      { new: true, runValidators: true }
     );
 
     if (!updated) {
