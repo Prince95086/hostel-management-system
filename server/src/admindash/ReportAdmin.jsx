@@ -20,6 +20,7 @@ import {
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
+import axios from "axios";
 
 export default function ReportAdmin() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -51,6 +52,38 @@ export default function ReportAdmin() {
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  /* ---------- FETCH REPORTS ---------- */
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const workerRes = await axios.get("http://localhost:5000/api/worker-reports");
+        const studentRes = await axios.get("http://localhost:5000/api/student-reports");
+
+        const workers = workerRes.data.map(r => ({
+          ...r,
+          _id: r._id,
+          type: "worker",
+          id: r.workerId,
+          name: r.workerName
+        }));
+
+        const students = studentRes.data.map(r => ({
+          ...r,
+          _id: r._id,
+          type: "student",
+          id: r.studentId,
+          name: r.studentName
+        }));
+
+        setReports([...workers, ...students]);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    fetchReports();
   }, []);
 
   /* ---------- SIDEBAR MENU ---------- */
@@ -86,6 +119,106 @@ export default function ReportAdmin() {
     }));
   };
 
+  const handleSubmitReport = async (e) => {
+    e.preventDefault();
+
+    try {
+      if (reportType === "worker") {
+        if (editingIndex !== null) {
+          await axios.put(`http://localhost:5000/api/worker-reports/${reports[editingIndex]._id}`, {
+            workerName: reportData.name,
+            workerId: reportData.id,
+            date: reportData.date,
+            issueType: reportData.issueType,
+            description: reportData.description,
+            severity: reportData.severity,
+            actionTaken: reportData.actionTaken,
+          });
+        } else {
+          await axios.post("http://localhost:5000/api/worker-reports", {
+            workerName: reportData.name,
+            workerId: reportData.id,
+            date: reportData.date,
+            issueType: reportData.issueType,
+            description: reportData.description,
+            severity: reportData.severity,
+            actionTaken: reportData.actionTaken,
+          });
+        }
+      } else {
+        if (editingIndex !== null) {
+          await axios.put(`http://localhost:5000/api/student-reports/${reports[editingIndex]._id}`, {
+            studentName: reportData.name,
+            studentId: reportData.id,
+            date: reportData.date,
+            issueType: reportData.issueType,
+            description: reportData.description,
+            severity: reportData.severity,
+            actionTaken: reportData.actionTaken,
+          });
+        } else {
+          await axios.post("http://localhost:5000/api/student-reports", {
+            studentName: reportData.name,
+            studentId: reportData.id,
+            date: reportData.date,
+            issueType: reportData.issueType,
+            description: reportData.description,
+            severity: reportData.severity,
+            actionTaken: reportData.actionTaken,
+          });
+        }
+      }
+
+      // Refresh the page to show updated data
+      window.location.reload();
+    } catch (err) {
+      console.log(err);
+      alert("Error submitting report. Please try again.");
+    }
+  };
+
+  const handleDeleteReport = async (index) => {
+    const report = filteredReports[index];
+
+    if (!window.confirm("Are you sure you want to delete this report?")) {
+      return;
+    }
+
+    try {
+      if (report.type === "worker") {
+        await axios.delete(`http://localhost:5000/api/worker-reports/${report._id}`);
+      } else {
+        await axios.delete(`http://localhost:5000/api/student-reports/${report._id}`);
+      }
+      
+      // Update local state instead of reloading the page
+      setReports(prev => prev.filter(r => r._id !== report._id));
+      alert("Report deleted successfully");
+    } catch (err) {
+      console.log(err);
+      alert("Error deleting report. Please try again.");
+    }
+  };
+
+  const handleEditReport = (index) => {
+    const report = filteredReports[index];
+
+    setReportType(report.type);
+    setReportData({
+      name: report.name,
+      id: report.id,
+      date: report.date,
+      issueType: report.issueType,
+      description: report.description,
+      severity: report.severity,
+      actionTaken: report.actionTaken,
+    });
+
+    const originalIndex = reports.findIndex(r => r._id === report._id);
+    setEditingIndex(originalIndex);
+    setShowReportModal(true);
+  };
+
   const handleReportTypeChange = (type) => {
     setReportType(type);
     setReportData({
@@ -100,71 +233,6 @@ export default function ReportAdmin() {
     setEditingIndex(null);
   };
 
-  const handleSubmitReport = (e) => {
-    e.preventDefault();
-    
-    const newReport = {
-      id: Date.now(), // Unique ID for each report
-      type: reportType,
-      ...reportData,
-      createdAt: new Date().toISOString(),
-    };
-
-    if (editingIndex !== null) {
-      // Update existing report
-      const updatedReports = [...reports];
-      updatedReports[editingIndex] = newReport;
-      setReports(updatedReports);
-      alert(`Report updated successfully for ${reportType === "worker" ? "Worker" : "Student"} ${reportData.name}`);
-    } else {
-      // Add new report
-      setReports(prev => [newReport, ...prev]);
-      alert(`Report submitted successfully for ${reportType === "worker" ? "Worker" : "Student"} ${reportData.name}`);
-    }
-
-    // Reset form and close modal
-    setReportData({
-      name: "",
-      id: "",
-      date: new Date().toISOString().split("T")[0],
-      issueType: "",
-      description: "",
-      severity: "medium",
-      actionTaken: "",
-    });
-    setEditingIndex(null);
-    setShowReportModal(false);
-  };
-
-  const handleEditReport = (index) => {
-    const reportToEdit = filteredReports[index];
-    const originalIndex = reports.findIndex(r => r.id === reportToEdit.id);
-    
-    setReportType(reportToEdit.type);
-    setReportData({
-      name: reportToEdit.name,
-      id: reportToEdit.id,
-      date: reportToEdit.date,
-      issueType: reportToEdit.issueType,
-      description: reportToEdit.description,
-      severity: reportToEdit.severity,
-      actionTaken: reportToEdit.actionTaken,
-    });
-    setEditingIndex(originalIndex);
-    setShowReportModal(true);
-  };
-
-  const handleDeleteReport = (index) => {
-    const reportToDelete = filteredReports[index];
-    const originalIndex = reports.findIndex(r => r.id === reportToDelete.id);
-    
-    if (window.confirm("Are you sure you want to delete this report?")) {
-      const updatedReports = reports.filter((_, i) => i !== originalIndex);
-      setReports(updatedReports);
-      alert("Report deleted successfully");
-    }
-  };
-
   const handleViewReport = (index) => {
     const report = filteredReports[index];
     alert(
@@ -177,7 +245,7 @@ export default function ReportAdmin() {
       `Severity: ${report.severity}\n` +
       `Description: ${report.description}\n` +
       `Action Taken: ${report.actionTaken || "Not specified"}\n` +
-      `Created: ${new Date(report.createdAt).toLocaleString()}`
+      `Created: ${new Date(report.createdAt || Date.now()).toLocaleString()}`
     );
   };
 
@@ -189,64 +257,6 @@ export default function ReportAdmin() {
       default: return "bg-gray-100 text-gray-800";
     }
   };
-
-  // Load sample data on first render (optional)
-  useEffect(() => {
-    // You can add some sample data for testing
-    const sampleReports = [
-      {
-        id: 1,
-        type: "worker",
-        name: "John Doe",
-        id: "WRK001",
-        date: "2024-01-15",
-        issueType: "Late Arrival",
-        description: "Worker arrived 2 hours late without prior notice.",
-        severity: "medium",
-        actionTaken: "Given verbal warning",
-        createdAt: "2024-01-15T10:30:00Z"
-      },
-      {
-        id: 2,
-        type: "student",
-        name: "Alice Smith",
-        id: "STU2024001",
-        date: "2024-01-14",
-        issueType: "Property Damage",
-        description: "Student damaged hostel furniture in room 204.",
-        severity: "high",
-        actionTaken: "Fine imposed and parents informed",
-        createdAt: "2024-01-14T15:45:00Z"
-      },
-      {
-        id: 3,
-        type: "worker",
-        name: "Robert Johnson",
-        id: "WRK002",
-        date: "2024-01-16",
-        issueType: "Poor Performance",
-        description: "Consistently failing to complete assigned cleaning tasks.",
-        severity: "medium",
-        actionTaken: "Given written warning and performance review scheduled",
-        createdAt: "2024-01-16T09:15:00Z"
-      },
-      {
-        id: 4,
-        type: "student",
-        name: "Michael Brown",
-        id: "STU2024002",
-        date: "2024-01-17",
-        issueType: "Late Night Entry",
-        description: "Returned to hostel after curfew multiple times this week.",
-        severity: "low",
-        actionTaken: "Warning issued",
-        createdAt: "2024-01-17T22:30:00Z"
-      }
-    ];
-    
-    // Uncomment the line below to load sample data automatically
-    // setReports(sampleReports);
-  }, []);
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -680,7 +690,7 @@ export default function ReportAdmin() {
                   </thead>
                   <tbody>
                     {filteredReports.map((report, index) => (
-                      <tr key={report.id} className="border-b hover:bg-gray-50 transition-colors">
+                      <tr key={report._id} className="border-b hover:bg-gray-50 transition-colors">
                         <td className="py-4 px-6 text-lg">{index + 1}</td>
                         <td className="py-4 px-6">
                           <span className={`px-4 py-2 rounded-full text-base font-medium ${

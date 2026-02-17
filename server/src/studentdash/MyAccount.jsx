@@ -105,7 +105,7 @@ export default function MyAccount() {
     { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" }, // Fixed path
     { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
     { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-    { label: "Reports", icon: <FaChartLine />, path: "/reports" }, // Removed /admin prefix
+    { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" }, // Removed /admin prefix
     { label: "Function", icon: <FaClipboardList />, path: "#" }, // Changed to #
     { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" }, // Removed /admin prefix
     { label: "Setting", icon: <FaCog />, path: "/student-setting" },

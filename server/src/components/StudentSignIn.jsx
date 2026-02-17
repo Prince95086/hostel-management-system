@@ -19,14 +19,28 @@ import 'react-toastify/dist/ReactToastify.css';
 const StudentSignIn = () => {
   const navigate = useNavigate();
 
-  const [loginMethod, setLoginMethod] = useState("email"); // "email" or "phone"
+  const [loginMethod, setLoginMethod] = useState("email"); // "email", "phone", or "rollNo"
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [rollNo, setRollNo] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Email validation function
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  // Roll number validation function - ONLY 4 DIGITS
+  const validateRollNo = (rollNo) => {
+    const cleaned = rollNo.trim();
+    // Must be exactly 4 digits (like 99, 1234, etc.)
+    return /^\d{1,4}$/.test(cleaned);
+  };
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -38,34 +52,51 @@ const StudentSignIn = () => {
         toast.error("Email is required", {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
         });
         return;
       }
-    } else {
+      if (!validateEmail(email.trim())) {
+        toast.error("Please enter a valid email address", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+    } else if (loginMethod === "phone") {
       if (!phone.trim()) {
         toast.error("Phone number is required", {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
         });
         return;
       }
-      // Basic phone validation
-      if (phone.trim().length < 10) {
-        toast.error("Please enter a valid phone number", {
+      const cleanedPhone = phone.replace(/\s/g, '');
+      if (cleanedPhone.length < 10 || cleanedPhone.length > 15) {
+        toast.error("Please enter a valid phone number (10-15 digits)", {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
+        });
+        return;
+      }
+      if (!/^\d+$/.test(cleanedPhone)) {
+        toast.error("Phone number should contain only digits", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+    } else if (loginMethod === "rollNo") {
+      if (!rollNo.trim()) {
+        toast.error("Roll Number is required", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+      if (!validateRollNo(rollNo)) {
+        toast.error("Roll Number must be 1-4 digits (e.g., 99, 1234)", {
+          position: "top-right",
+          autoClose: 3000,
         });
         return;
       }
@@ -75,10 +106,14 @@ const StudentSignIn = () => {
       toast.error("Password is required", {
         position: "top-right",
         autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters", {
+        position: "top-right",
+        autoClose: 3000,
       });
       return;
     }
@@ -86,32 +121,42 @@ const StudentSignIn = () => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/student/signin",
-        {
-          [loginMethod]: loginMethod === "email" ? email.trim() : phone.trim(),
-          password: password.trim(),
-          loginMethod: loginMethod
-        }
-      );
+      const payload = {
+        password: password.trim(),
+        loginMethod: loginMethod
+      };
 
-      // Save token
-      if (rememberMe) {
-        localStorage.setItem("token", res.data.token);
-      } else {
-        sessionStorage.setItem("token", res.data.token);
+      // Add the appropriate identifier based on login method
+      if (loginMethod === "email") {
+        payload.email = email.trim().toLowerCase();
+      } else if (loginMethod === "phone") {
+        payload.phone = phone.replace(/\s/g, '');
+      } else if (loginMethod === "rollNo") {
+        // For 4-digit roll numbers, we can use it as is or add prefix
+        // Let's use it as is for now
+        payload.rollNo = rollNo.trim();
       }
 
-      localStorage.setItem("student", JSON.stringify(res.data.student));
+      const res = await axios.post(
+        "http://localhost:5000/api/student/signin",
+        payload
+      );
+
+      // Save token and student data
+      if (rememberMe) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("student", JSON.stringify(res.data.student));
+        localStorage.setItem("studentId", res.data.student.rollNo || res.data.student._id);
+      } else {
+        sessionStorage.setItem("token", res.data.token);
+        sessionStorage.setItem("student", JSON.stringify(res.data.student));
+        sessionStorage.setItem("studentId", res.data.student.rollNo || res.data.student._id);
+      }
 
       // Show success toast
       toast.success("Login successful! Redirecting...", {
         position: "top-right",
         autoClose: 2000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
       });
 
       // Navigate after delay
@@ -120,18 +165,30 @@ const StudentSignIn = () => {
       }, 1500);
 
     } catch (error) {
-      const errorMessage = error?.response?.data?.message ||
-        (loginMethod === "email" ? "Invalid email or password" : "Invalid phone number or password");
+      console.error("Login error:", error);
+      
+      let errorMessage = "Invalid credentials. Please try again.";
+      
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (loginMethod === "email") {
+        errorMessage = "Invalid email or password";
+      } else if (loginMethod === "phone") {
+        errorMessage = "Invalid phone number or password";
+      } else if (loginMethod === "rollNo") {
+        errorMessage = "Invalid Roll Number or password";
+      } else if (error.code === "ERR_NETWORK") {
+        errorMessage = "Network error. Please check your connection.";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      }
+      
       setErrorMsg(errorMessage);
       
       // Show error toast
       toast.error(errorMessage, {
         position: "top-right",
         autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
       });
     } finally {
       setIsLoading(false);
@@ -152,6 +209,49 @@ const StudentSignIn = () => {
     
     setPhone(value);
     setErrorMsg("");
+  };
+
+  // Format roll number - only allow digits, max 4
+  const handleRollNoChange = (e) => {
+    let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+    if (value.length > 4) value = value.slice(0, 4); // Max 4 digits
+    setRollNo(value);
+    setErrorMsg("");
+  };
+
+  // Reset form when switching methods
+  const handleMethodChange = (method) => {
+    setLoginMethod(method);
+    setErrorMsg("");
+    // Clear other fields when switching methods
+    if (method === "email") {
+      setPhone("");
+      setRollNo("");
+    } else if (method === "phone") {
+      setEmail("");
+      setRollNo("");
+    } else if (method === "rollNo") {
+      setEmail("");
+      setPhone("");
+    }
+  };
+
+  // Auto-fill demo credentials
+  const fillDemoCredentials = () => {
+    if (loginMethod === "email") {
+      setEmail("student@example.com");
+      setPassword("password123");
+    } else if (loginMethod === "phone") {
+      setPhone("9876543210");
+      setPassword("password123");
+    } else if (loginMethod === "rollNo") {
+      setRollNo("99");
+      setPassword("password123");
+    }
+    toast.info("Demo credentials filled!", {
+      position: "top-right",
+      autoClose: 2000,
+    });
   };
 
   return (
@@ -193,7 +293,7 @@ const StudentSignIn = () => {
             <div className="flex border-2 border-gray-200 rounded-2xl overflow-hidden">
               <button
                 type="button"
-                onClick={() => setLoginMethod("email")}
+                onClick={() => handleMethodChange("email")}
                 className={`flex-1 py-3 font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${
                   loginMethod === "email"
                     ? "bg-blue-600 text-white"
@@ -205,7 +305,7 @@ const StudentSignIn = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setLoginMethod("phone")}
+                onClick={() => handleMethodChange("phone")}
                 className={`flex-1 py-3 font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${
                   loginMethod === "phone"
                     ? "bg-blue-600 text-white"
@@ -215,21 +315,37 @@ const StudentSignIn = () => {
                 <FaPhone />
                 Phone
               </button>
+              <button
+                type="button"
+                onClick={() => handleMethodChange("rollNo")}
+                className={`flex-1 py-3 font-semibold flex items-center justify-center gap-2 transition-all duration-300 ${
+                  loginMethod === "rollNo"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <FaIdCard />
+                Roll No
+              </button>
             </div>
           </div>
 
           <form onSubmit={handleSignIn} className="space-y-6">
 
-            {/* Email/Phone Input */}
+            {/* Email/Phone/RollNo Input */}
             <div>
               <label className="text-sm font-semibold text-gray-700">
-                {loginMethod === "email" ? "Email Address" : "Phone Number"}
+                {loginMethod === "email" ? "Email Address" : 
+                 loginMethod === "phone" ? "Phone Number" : 
+                 "Roll Number"}
               </label>
               <div className="relative mt-2">
                 {loginMethod === "email" ? (
                   <FaEnvelope className="absolute left-4 top-4 text-gray-400" />
-                ) : (
+                ) : loginMethod === "phone" ? (
                   <FaPhone className="absolute left-4 top-4 text-gray-400" />
+                ) : (
+                  <FaIdCard className="absolute left-4 top-4 text-gray-400" />
                 )}
                 {loginMethod === "email" ? (
                   <input
@@ -243,7 +359,7 @@ const StudentSignIn = () => {
                     placeholder="student@panjabuniversity.ac.in"
                     className="w-full border-2 border-gray-200 rounded-2xl pl-12 py-4 focus:border-blue-500 outline-none transition-all duration-300"
                   />
-                ) : (
+                ) : loginMethod === "phone" ? (
                   <input
                     type="tel"
                     required
@@ -252,20 +368,42 @@ const StudentSignIn = () => {
                     placeholder="98XXX XXXXX"
                     className="w-full border-2 border-gray-200 rounded-2xl pl-12 py-4 focus:border-blue-500 outline-none transition-all duration-300"
                   />
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    value={rollNo}
+                    onChange={handleRollNoChange}
+                    placeholder="e.g., 99 or 1234"
+                    className="w-full border-2 border-gray-200 rounded-2xl pl-12 py-4 focus:border-blue-500 outline-none transition-all duration-300"
+                    inputMode="numeric"
+                    pattern="\d*"
+                  />
                 )}
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 {loginMethod === "email" 
                   ? "Use your registered university email" 
-                  : "Enter your 10-digit phone number"}
+                  : loginMethod === "phone"
+                  ? "Enter your 10-digit phone number"
+                  : "Enter your 1-4 digit Roll Number"}
               </p>
             </div>
 
             {/* Password */}
             <div>
-              <label className="text-sm font-semibold text-gray-700">
-                Password
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={fillDemoCredentials}
+                  className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Fill demo credentials
+                </button>
+              </div>
               <div className="relative mt-2">
                 <FaLock className="absolute left-4 top-4 text-gray-400" />
                 <input
@@ -287,6 +425,9 @@ const StudentSignIn = () => {
                   {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Password must be at least 6 characters
+              </p>
             </div>
 
             <div className="flex justify-between items-center">
@@ -310,7 +451,7 @@ const StudentSignIn = () => {
 
             {/* Error */}
             {errorMsg && (
-              <p className="text-red-600 text-sm font-medium">
+              <p className="text-red-600 text-sm font-medium p-3 bg-red-50 rounded-lg">
                 {errorMsg}
               </p>
             )}
@@ -338,26 +479,79 @@ const StudentSignIn = () => {
           {/* Divider */}
           <div className="flex items-center my-8">
             <div className="flex-1 border-t border-gray-200"></div>
-            <span className="px-4 text-gray-500 text-sm">OR</span>
+            <span className="px-4 text-gray-500 text-sm">QUICK ACCESS</span>
             <div className="flex-1 border-t border-gray-200"></div>
           </div>
 
-          {/* Alternative Login Options */}
+          {/* Quick Login Suggestions */}
           <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => {
-                // Handle roll number login (if implemented)
-                toast.info("Roll number login coming soon!", {
-                  position: "top-right",
-                  autoClose: 3000,
-                });
-              }}
-              className="w-full border-2 border-gray-200 text-gray-700 py-3 rounded-2xl font-semibold flex justify-center gap-2 items-center hover:bg-gray-50 transition-all duration-300"
-            >
-              <FaIdCard />
-              Sign in with Roll Number
-            </button>
+            <div className="text-center text-sm text-gray-600 mb-4">
+              <p>Use the method that's most convenient for you:</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <FaIdCard className="text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">Roll Number</p>
+                      <p className="text-xs text-gray-600">Simple 1-4 digit number</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMethodChange("rollNo")}
+                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Select
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-3 rounded-xl border border-green-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <FaEnvelope className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">Email</p>
+                      <p className="text-xs text-gray-600">For registered email users</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMethodChange("email")}
+                    className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Select
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-purple-50 p-3 rounded-xl border border-purple-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <FaPhone className="text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">Phone</p>
+                      <p className="text-xs text-gray-600">For mobile number users</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMethodChange("phone")}
+                    className="px-3 py-1 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Select
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Signup */}
@@ -377,14 +571,29 @@ const StudentSignIn = () => {
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600">
           <FaShieldAlt className="inline text-green-500 mr-2" />
-          Secure & Encrypted • {loginMethod === "email" ? "Email" : "Phone"} Login
+          Secure & Encrypted • Login via {loginMethod === "email" ? "Email" : 
+                                        loginMethod === "phone" ? "Phone" : 
+                                        "Roll Number"}
         </div>
 
         {/* Quick Demo Info */}
         <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-          <p className="font-semibold mb-1">Demo Credentials:</p>
-          <p className="mb-1">Email: student@example.com</p>
-          <p>Phone: 9876543210 (use any password)</p>
+          <p className="font-semibold mb-2">Demo Credentials:</p>
+          <div className="space-y-1">
+            <p>• <span className="font-medium">Email:</span> student@example.com</p>
+            <p>• <span className="font-medium">Phone:</span> 9876543210</p>
+            <p>• <span className="font-medium">Roll No:</span> 99 (1-4 digits)</p>
+            <p>• <span className="font-medium">Password:</span> password123</p>
+            <p className="text-xs mt-1 italic">Click "Fill demo credentials" button to auto-fill</p>
+          </div>
+        </div>
+
+        {/* Help Section */}
+        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+          <p className="font-semibold mb-1">Need help with login?</p>
+          <p className="mb-1">• Roll Number: Use your 1-4 digit hostel roll number (e.g., 99, 1234)</p>
+          <p>• Contact hostel administration if you forget your credentials</p>
+          <p className="mt-1 text-xs">Technical support: support@panjabuniversity.ac.in</p>
         </div>
       </div>
     </div>

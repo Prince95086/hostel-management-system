@@ -26,7 +26,8 @@ import SportsFacilities from "./components/studentfacilities/SportsFacilities";
 import Cafeteria from "./components/studentfacilities/Cafeteria";
 import MedicalServices from "./components/studentfacilities/MedicalServices";
 import StudentPortal from "./components/StudentPortal";
-import StudentProfileTable from "./components/StudentProfileTable";
+
+import StudentProfileTable from "./studentdash/PayFee";
 import StudentDetailsTable from "./admindash/Student";
 import CategoryComplaints from "./components/CategoryComplaints";
 import MyAccount from "./studentdash/MyAccount";
@@ -44,6 +45,9 @@ import TotalAttendance from "./admindash/TotalAttendance";
 import AdminLayout from "./admindash/ReportAdmin";
 import AdminFunction from "./admindash/AdminFunction";
 import FunctionList from "./studentdash/FunctionList";
+import StudentReports from "./studentdash/StudentReports";
+import WorkerReports from "./studentdash/WorkerReports";
+import PayFeePage from "./studentdash/PayFee.jsx";
 
 
 
@@ -80,7 +84,7 @@ function App() {
         <Route path="/student-portal" element={<StudentPortal/>} />
         <Route path="/admin-student" element={<StudentDetailsTable/>} />
         <Route path="/my-account" element={<MyAccount/>} />
-        <Route path="/my-fake-profile" element={<StudentProfileTable/>} />
+       // <Route path="/pay-fee" element={<StudentProfileTable/>} />
         <Route path="/student-setting" element={<Setting/>} />
         <Route path="/messfee-record" element={<MessFeeRecord/>} />
         <Route path="/admin-dashbord" element={<Dashbord/>} />
@@ -93,6 +97,10 @@ function App() {
         <Route path="/admin/report-student" element={<AdminLayout/>} />
         <Route path="/admin/function" element={<AdminFunction/>} />
         <Route path="/admin/total-complaint" element={<FunctionList/>} />
+        <Route path="/admin/reports" element={<StudentReports/>} />
+       
+       
+       
 
         
        
