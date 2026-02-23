@@ -48,12 +48,29 @@ export default function MyAccount() {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  /* ---------- FETCH STUDENT DATA (Only on initial load) ---------- */
+  /* ---------- FETCH STUDENT DATA (Auto-load when signed in) ---------- */
   useEffect(() => {
     const fetchStudent = async () => {
       try {
-        // Check if we already have data in localStorage
+        // First check if we have student info from sign-in
+        const savedStudentInfo = localStorage.getItem("studentInfo") || sessionStorage.getItem("studentInfo");
         const savedStudent = localStorage.getItem("student");
+        
+        // If we have studentInfo, use that first
+        if (savedStudentInfo && !initialLoadComplete) {
+          const parsedInfo = JSON.parse(savedStudentInfo);
+          setStudentData(parsedInfo);
+          setLoading(false);
+          setInitialLoadComplete(true);
+          
+          // Also save to student for compatibility
+          if (!savedStudent) {
+            localStorage.setItem("student", JSON.stringify(parsedInfo));
+          }
+          return;
+        }
+        
+        // Check if we already have data in localStorage as 'student'
         if (savedStudent && !initialLoadComplete) {
           setStudentData(JSON.parse(savedStudent));
           setLoading(false);
@@ -63,10 +80,14 @@ export default function MyAccount() {
 
         setLoading(true);
 
-        const token =
-          localStorage.getItem("token") || sessionStorage.getItem("token");
+        // Get token from various possible storage locations
+        const token = localStorage.getItem("token") || 
+                     sessionStorage.getItem("token") || 
+                     localStorage.getItem("studentToken") || 
+                     sessionStorage.getItem("studentToken");
 
         if (!token) {
+          console.log("No token found, redirecting to signin");
           navigate("/signin-options");
           return;
         }
@@ -86,10 +107,29 @@ export default function MyAccount() {
         console.log("Student API DATA →", data);
 
         setStudentData(data);
+        
+        // Save to both storage locations for consistency
         localStorage.setItem("student", JSON.stringify(data));
+        localStorage.setItem("studentInfo", JSON.stringify(data));
+        
         setInitialLoadComplete(true);
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching student data:", err);
+        
+        // Try to get from localStorage as fallback
+        const fallbackData = localStorage.getItem("studentInfo") || localStorage.getItem("student");
+        if (fallbackData) {
+          try {
+            setStudentData(JSON.parse(fallbackData));
+            setLoading(false);
+            setInitialLoadComplete(true);
+            return;
+          } catch (e) {
+            console.error("Fallback parse error:", e);
+          }
+        }
+        
+        // If no fallback, redirect to login
         navigate("/signin-options");
       } finally {
         setLoading(false);
@@ -102,26 +142,23 @@ export default function MyAccount() {
   /* ---------- SIDEBAR MENU ---------- */
   const menuItems = [
     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" }, // Fixed path
+    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
     { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
     { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-    { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" }, // Removed /admin prefix
-    { label: "Function", icon: <FaClipboardList />, path: "#" }, // Changed to #
-    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" }, // Removed /admin prefix
+    { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
+    { label: "Function", icon: <FaClipboardList />, path: "/functions" },
+    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
     { label: "Setting", icon: <FaCog />, path: "/student-setting" },
   ];
 
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);
     
-    // Special handling for Function button
-    if (label === "Function") {
+    // Navigate to the path for all menu items
+    if (path && path !== "#") {
+      navigate(path);
       if (isMobile) setSidebarOpen(false);
-      return;
     }
-    
-    navigate(path);
-    if (isMobile) setSidebarOpen(false);
   };
 
   // Set active menu based on current path
@@ -156,7 +193,20 @@ export default function MyAccount() {
     // Clear all student-related data
     localStorage.removeItem("student");
     localStorage.removeItem("token");
+    localStorage.removeItem("studentInfo");
+    localStorage.removeItem("studentId");
+    localStorage.removeItem("studentPhone");
+    localStorage.removeItem("studentRollNo");
+    localStorage.removeItem("studentData");
+    localStorage.removeItem("activeMenu");
+    localStorage.removeItem("studentToken");
+    
     sessionStorage.removeItem("token");
+    sessionStorage.removeItem("studentInfo");
+    sessionStorage.removeItem("studentId");
+    sessionStorage.removeItem("studentPhone");
+    sessionStorage.removeItem("studentRollNo");
+    sessionStorage.removeItem("studentToken");
     
     // Redirect to login page
     navigate("/signin-options");
@@ -174,19 +224,19 @@ export default function MyAccount() {
     );
   }
 
-  // Format data for display
+  // Format data for display with fallbacks
   const displayData = {
-    name: studentData?.name ?? "N/A",
+    name: studentData?.name ?? studentData?.studentName ?? "N/A",
     email: studentData?.email ?? "N/A",
-    phone: studentData?.phone ?? "N/A",
-    rollNo: studentData?.rollNo ?? "N/A",
-    year: studentData?.year ?? "N/A",
-    department: studentData?.dept ?? "N/A",   // backend field
-    branch: studentData?.branch ?? "N/A",
-    category: studentData?.category ?? "N/A",
-    hostel: studentData?.hostel ?? "N/A",
-    block: studentData?.block ?? "N/A",
-    roomNo: studentData?.roomNo ?? "N/A",
+    phone: studentData?.phone ?? studentData?.phoneNo ?? "N/A",
+    rollNo: studentData?.rollNo ?? studentData?.rollNumber ?? "N/A",
+    year: studentData?.year ?? studentData?.currentYear ?? "N/A",
+    department: studentData?.dept ?? studentData?.department ?? "N/A",
+    branch: studentData?.branch ?? studentData?.course ?? "N/A",
+    category: studentData?.category ?? "General",
+    hostel: studentData?.hostel ?? studentData?.hostelName ?? "Teja Singh Boys Hostel 6",
+    block: studentData?.block ?? studentData?.blockNo ?? "A",
+    roomNo: studentData?.roomNo ?? studentData?.room ?? "N/A",
   };
 
   return (
@@ -279,7 +329,7 @@ export default function MyAccount() {
                     className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors border-b border-gray-100"
                     onClick={() => {
                       setDropdownOpen(false);
-                      navigate("/student-setting"); // Fixed path
+                      navigate("/student-setting");
                     }}
                   >
                     Settings
@@ -287,7 +337,7 @@ export default function MyAccount() {
 
                   <button
                     type="button"
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors"
+                    className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors mt-2 border-t border-gray-100"
                     onClick={handleLogout}
                   >
                     Logout
@@ -304,7 +354,7 @@ export default function MyAccount() {
             {/* Page Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-800">My Account</h1>
-              <p className="text-gray-600 mt-2">Student Information</p>
+              <p className="text-gray-600 mt-2">Welcome back, {displayData.name}!</p>
             </div>
 
             {/* Student Information Card */}
@@ -327,7 +377,7 @@ export default function MyAccount() {
                       <FaUserCircle className="text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Name</p>
+                      <p className="text-sm text-gray-500">Full Name</p>
                       <p className="font-semibold text-gray-800">{displayData.name}</p>
                     </div>
                   </div>
@@ -366,7 +416,7 @@ export default function MyAccount() {
                       <FaIdCard className="text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Roll No</p>
+                      <p className="text-sm text-gray-500">Roll Number</p>
                       <p className="font-semibold text-gray-800">{displayData.rollNo}</p>
                     </div>
                   </div>
@@ -405,7 +455,7 @@ export default function MyAccount() {
                       <FaBed className="text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Room No</p>
+                      <p className="text-sm text-gray-500">Room Number</p>
                       <p className="font-semibold text-gray-800">Room {displayData.roomNo}</p>
                     </div>
                   </div>
@@ -462,24 +512,11 @@ export default function MyAccount() {
                     </div>
                   </div>
                 </div>
-
-                {/* University */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 md:col-span-2 lg:col-span-3">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                      <FaGraduationCap className="text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">University</p>
-                      <p className="font-semibold text-gray-800">Panjab University, Chandigarh</p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Additional information section */}
               <div className="mt-8 pt-8 border-t border-gray-200">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Additional Information</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Account Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Account Status</p>
@@ -488,12 +525,14 @@ export default function MyAccount() {
                     </span>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Last Updated</p>
+                    <p className="text-sm text-gray-500">Last Login</p>
                     <p className="font-semibold text-gray-800">
                       {new Date().toLocaleDateString('en-IN', { 
                         day: 'numeric', 
                         month: 'long', 
-                        year: 'numeric' 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
                       })}
                     </p>
                   </div>
@@ -520,7 +559,7 @@ export default function MyAccount() {
               </div>
               <div className="flex space-x-4">
                 <button
-                  onClick={() => navigate("/student-setting")} // Fixed path
+                  onClick={() => navigate("/student-setting")}
                   className="px-6 py-2 border border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 transition-colors flex items-center gap-2"
                 >
                   <FaCog />

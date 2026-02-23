@@ -48,6 +48,7 @@ import FunctionList from "./studentdash/FunctionList";
 import StudentReports from "./studentdash/StudentReports";
 import WorkerReports from "./studentdash/WorkerReports";
 import PayFeePage from "./studentdash/PayFee.jsx";
+import PendingComplain from "./studentdash/PendingComplain.jsx";
 
 
 
@@ -71,7 +72,7 @@ function App() {
          <Route path="/student-signin-complain" element={<Complain/>} />
          <Route path="/forgot-password" element={<ForgotPassword/>} />
         <Route path="/complain-signin" element={<ComplainSignIn/>} />
-        <Route path="/about" element={<AboutHostelManagement/>} />
+        <Route path="/about" element={<AboutHostelManagement/>} /> 
         <Route path="/admission/process" element={<ApplicationProcess/>} />
         <Route path="/admission/requirements" element={<Requirements/>} />
         <Route path="/admission/fees" element={<FeesStructure/>} />
@@ -98,6 +99,8 @@ function App() {
         <Route path="/admin/function" element={<AdminFunction/>} />
         <Route path="/admin/total-complaint" element={<FunctionList/>} />
         <Route path="/admin/reports" element={<StudentReports/>} />
+         <Route path="/admin/pending-complaint" element={<PendingComplain/>} />
+        
        
        
        

@@ -22,6 +22,8 @@ import functionRoutes from "./routes/function.routes.js";
 import workerReportRoutes from "./routes/workerReportRoutes.js";
 import studentReportRoutes from "./routes/studentReportRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import workerSigninRoute from "./routes/workerSignin.route.js";
+import studentComplainRoutes from "./routes/studentComplain.routes.js";
 
 dotenv.config();
 
@@ -62,6 +64,9 @@ app.use("/api/functions", functionRoutes);
 app.use("/api/worker-reports", workerReportRoutes);
 app.use("/api/student-reports", studentReportRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/workers/signin", workerSigninRoute);
+app.use("/api/studentcomplaints", studentComplainRoutes);
+
 
 // MongoDB Connection
 mongoose

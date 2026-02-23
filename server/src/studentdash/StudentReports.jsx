@@ -23,80 +23,290 @@ import {
   FaLock,
   FaSignOutAlt,
   FaBell,
-  FaExclamationCircle
+  FaExclamationCircle,
+  FaPhone,
+  FaIdCard
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
 import axios from "axios";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // ==================== REPORTS COMPONENT ====================
 function ReportsPage() {
   const [studentId, setStudentId] = useState("");
   const [reports, setReports] = useState([]);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState("");
+  const [studentInfo, setStudentInfo] = useState(null);
+  const [debug, setDebug] = useState(""); // For debugging
+  const [stats, setStats] = useState({
+    total: 0,
+    high: 0,
+    medium: 0,
+    low: 0
+  });
 
-  // Check if already logged in from localStorage
+  // Check if already logged in from sign-in page
   useEffect(() => {
-    const savedId = localStorage.getItem("reportStudentId");
-    const savedReports = localStorage.getItem("reportStudentData");
-    
-    if (savedId && savedReports) {
-      setStudentId(savedId);
-      setReports(JSON.parse(savedReports));
-      setLoggedIn(true);
-    }
+    const checkStoredLogin = async () => {
+      setDebug("Checking login...");
+      
+      // Check all possible storage locations
+      const storedStudent = localStorage.getItem("studentInfo") || sessionStorage.getItem("studentInfo");
+      const storedId = localStorage.getItem("studentId") || sessionStorage.getItem("studentId");
+      const storedPhone = localStorage.getItem("studentPhone") || sessionStorage.getItem("studentPhone");
+      const storedRollNo = localStorage.getItem("studentRollNo") || sessionStorage.getItem("studentRollNo");
+      
+      console.log("ReportsPage - Checking login:", { storedStudent, storedId, storedPhone, storedRollNo });
+      setDebug(`Found: ${storedStudent ? 'studentInfo' : 'no studentInfo'}, ${storedPhone ? 'phone' : ''}, ${storedRollNo ? 'rollNo' : ''}`);
+
+      if (storedStudent) {
+        try {
+          const studentData = JSON.parse(storedStudent);
+          setStudentInfo(studentData);
+          setDebug(`Student: ${studentData.name}`);
+          
+          // Try to fetch reports by phone number first
+          if (storedPhone) {
+            setDebug(`Fetching by phone: ${storedPhone}`);
+            await fetchReportsByPhone(storedPhone);
+          }
+          // Then try by roll number
+          else if (storedRollNo || studentData.rollNo) {
+            const rollToUse = storedRollNo || studentData.rollNo;
+            setDebug(`Fetching by roll: ${rollToUse}`);
+            await fetchReportsByRollNo(rollToUse);
+          }
+          // Finally try by student ID
+          else if (storedId || studentData._id) {
+            const idToUse = storedId || studentData._id;
+            setDebug(`Fetching by ID: ${idToUse}`);
+            await fetchReportsById(idToUse);
+          }
+          else {
+            setLoggedIn(true);
+            setLoading(false);
+            setDebug("No identifier found, but logged in");
+          }
+        } catch (e) {
+          console.error("Error parsing student info:", e);
+          setDebug(`Error parsing: ${e.message}`);
+          setLoggedIn(false);
+          setLoading(false);
+        }
+      } else {
+        setDebug("No student info found");
+        setLoggedIn(false);
+        setLoading(false);
+      }
+    };
+
+    checkStoredLogin();
   }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!studentId.trim()) {
-      setError("Please enter your Student ID");
-      return;
-    }
-
+  // Fetch reports by phone number
+  const fetchReportsByPhone = async (phone) => {
     setLoading(true);
+    setError("");
+    
     try {
+      console.log("Fetching reports by phone:", phone);
+      setDebug(`Calling API: ${API_BASE_URL}/student-reports/phone/${phone}`);
+      
       const res = await axios.get(
-        `http://localhost:5000/api/student-reports/${studentId}`
+        `${API_BASE_URL}/student-reports/phone/${phone}`
       );
 
-      const data = res.data.map((r) => ({
-        _id: r._id,
-        name: r.studentName,
-        id: r.studentId,
-        issueType: r.issueType,
-        severity: r.severity,
-        date: r.date,
-        description: r.description,
-        actionTaken: r.actionTaken,
-      }));
+      console.log("API Response:", res.data);
+      setDebug(`Response received: ${JSON.stringify(res.data).substring(0, 100)}...`);
 
-      setReports(data);
-      setLoggedIn(true);
-      localStorage.setItem("reportStudentId", studentId);
-      localStorage.setItem("reportStudentData", JSON.stringify(data));
+      // Handle different response formats
+      if (res.data) {
+        let reportsData = [];
+        
+        // Check if response has data in various possible formats
+        if (res.data.success && res.data.data) {
+          reportsData = res.data.data;
+        } else if (Array.isArray(res.data)) {
+          reportsData = res.data;
+        } else if (res.data.reports) {
+          reportsData = res.data.reports;
+        } else if (res.data.studentReports) {
+          reportsData = res.data.studentReports;
+        } else {
+          // If it's a single object, wrap in array
+          reportsData = [res.data].filter(item => item && item._id);
+        }
+        
+        if (reportsData.length > 0) {
+          processReportsData(reportsData, `Phone: ${phone}`);
+        } else {
+          setReports([]);
+          setLoggedIn(true);
+          setLoading(false);
+          setDebug("No reports in response");
+        }
+      } else {
+        setReports([]);
+        setLoggedIn(true);
+        setLoading(false);
+        setDebug("Empty response");
+      }
     } catch (err) {
-      console.log(err);
-      setError("No reports found or server error. Please check your Student ID.");
-    } finally {
+      console.error("Error fetching reports by phone:", err);
+      setDebug(`Error: ${err.message}`);
+      setError(err.response?.data?.message || "Failed to fetch reports");
+      setReports([]);
+      setLoggedIn(true);
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    setStudentId("");
-    setReports([]);
-    setLoggedIn(false);
-    localStorage.removeItem("reportStudentId");
-    localStorage.removeItem("reportStudentData");
+  // Fetch reports by roll number
+  const fetchReportsByRollNo = async (rollNo) => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      console.log("Fetching reports by roll no:", rollNo);
+      setDebug(`Calling API: ${API_BASE_URL}/student-reports/rollno/${rollNo}`);
+      
+      const res = await axios.get(
+        `${API_BASE_URL}/student-reports/rollno/${rollNo}`
+      );
+
+      console.log("API Response:", res.data);
+      setDebug(`Response received: ${JSON.stringify(res.data).substring(0, 100)}...`);
+
+      if (res.data) {
+        let reportsData = [];
+        
+        if (res.data.success && res.data.data) {
+          reportsData = res.data.data;
+        } else if (Array.isArray(res.data)) {
+          reportsData = res.data;
+        } else if (res.data.reports) {
+          reportsData = res.data.reports;
+        } else {
+          reportsData = [res.data].filter(item => item && item._id);
+        }
+        
+        if (reportsData.length > 0) {
+          processReportsData(reportsData, `Roll: ${rollNo}`);
+        } else {
+          setReports([]);
+          setLoggedIn(true);
+          setLoading(false);
+          setDebug("No reports in response");
+        }
+      } else {
+        setReports([]);
+        setLoggedIn(true);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Error fetching reports by roll no:", err);
+      setDebug(`Error: ${err.message}`);
+      setError(err.response?.data?.message || "Failed to fetch reports");
+      setReports([]);
+      setLoggedIn(true);
+      setLoading(false);
+    }
+  };
+
+  // Fetch reports by student ID
+  const fetchReportsById = async (id) => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      console.log("Fetching reports by ID:", id);
+      setDebug(`Calling API: ${API_BASE_URL}/student-reports/${id}`);
+      
+      const res = await axios.get(
+        `${API_BASE_URL}/student-reports/${id}`
+      );
+
+      console.log("API Response:", res.data);
+      setDebug(`Response received: ${JSON.stringify(res.data).substring(0, 100)}...`);
+
+      if (res.data) {
+        let reportsData = [];
+        
+        if (res.data.success && res.data.data) {
+          reportsData = res.data.data;
+        } else if (Array.isArray(res.data)) {
+          reportsData = res.data;
+        } else if (res.data.reports) {
+          reportsData = res.data.reports;
+        } else {
+          reportsData = [res.data].filter(item => item && item._id);
+        }
+        
+        if (reportsData.length > 0) {
+          processReportsData(reportsData, id);
+        } else {
+          setReports([]);
+          setLoggedIn(true);
+          setLoading(false);
+        }
+      } else {
+        setReports([]);
+        setLoggedIn(true);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Error fetching reports by ID:", err);
+      setDebug(`Error: ${err.message}`);
+      setError(err.response?.data?.message || "Failed to fetch reports");
+      setReports([]);
+      setLoggedIn(true);
+      setLoading(false);
+    }
+  };
+
+  // Process reports data
+  const processReportsData = (data, displayId) => {
+    const formattedReports = data.map((r) => ({
+      _id: r._id || r.id,
+      name: r.studentName || r.name || r.userName || "Unknown",
+      id: r.studentId || r.id || r.rollNo || r.rollNumber || "N/A",
+      issueType: r.issueType || r.issue || r.type || "General",
+      severity: r.severity || r.priority || "medium",
+      date: r.date || r.createdAt || r.createdDate,
+      description: r.description || r.message || r.details || "No description",
+      actionTaken: r.actionTaken || r.action || r.resolution || "No action specified",
+    }));
+
+    setReports(formattedReports);
+    setStudentId(displayId);
+    setLoggedIn(true);
+    
+    // Calculate statistics
+    const high = formattedReports.filter(r => r.severity?.toLowerCase() === 'high').length;
+    const medium = formattedReports.filter(r => r.severity?.toLowerCase() === 'medium').length;
+    const low = formattedReports.filter(r => r.severity?.toLowerCase() === 'low').length;
+    
+    setStats({
+      total: formattedReports.length,
+      high,
+      medium,
+      low
+    });
+    
+    setLoading(false);
+    setDebug(`Processed ${formattedReports.length} reports`);
+    
+    if (formattedReports.length > 0) {
+      console.log(`Found ${formattedReports.length} reports`);
+    }
   };
 
   const getSeverityColor = (severity) => {
-    switch (severity) {
+    switch (severity?.toLowerCase()) {
       case "high": return "bg-red-100 text-red-800";
       case "medium": return "bg-yellow-100 text-yellow-800";
       case "low": return "bg-green-100 text-green-800";
@@ -104,111 +314,109 @@ function ReportsPage() {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">My Reports</h1>
-        <div className="text-sm text-gray-600">
-          View your disciplinary and academic reports
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">My Reports</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {studentInfo ? `Welcome, ${studentInfo.name}` : "View your disciplinary and academic reports"}
+          </p>
+          {/* Debug Info - Remove in production */}
+          {debug && (
+            <p className="text-xs text-gray-500 mt-1 bg-gray-100 p-2 rounded">
+              Debug: {debug}
+            </p>
+          )}
         </div>
+        {loggedIn && reports.length > 0 && (
+          <div className="flex items-center gap-2 bg-purple-100 text-purple-800 px-4 py-2 rounded-full">
+            <FaChartLine />
+            <span className="font-semibold">{stats.total} Total Reports</span>
+          </div>
+        )}
       </div>
 
-      {!loggedIn ? (
-        /* 🔐 LOGIN FORM - INCREASED WIDTH */
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-4xl mx-auto w-full">
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FaExclamationCircle className="text-purple-600 text-3xl" />
-            </div>
-            <h2 className="text-3xl font-bold text-purple-700 mb-2">
-              Student Login
-            </h2>
-            <p className="text-gray-600">Enter your Student ID to view your reports</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Student ID *
-              </label>
-              <div className="relative">
-                <FaUserCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Enter your Student ID"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  className="w-full pl-10 pr-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg"
-                  required
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <FaTimesCircle className="text-red-500" />
-                  <p className="text-red-600 font-medium">{error}</p>
-                </div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2 text-lg"
-            >
-              {loading ? (
-                <>
-                  <FaSpinner className="animate-spin" />
-                  <span>Loading Reports...</span>
-                </>
-              ) : (
-                <>
-                  <FaLock />
-                  <span>View My Reports</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 p-6 bg-gray-50 rounded-lg">
-            <p className="text-base text-gray-600">
-              <strong>Note:</strong> This section shows your disciplinary reports, complaints, and academic reports. 
-              Your data is secure and only accessible with your Student ID.
-            </p>
-          </div>
+      {loading ? (
+        /* Loading State */
+        <div className="bg-white rounded-xl shadow-lg p-12 max-w-4xl mx-auto w-full text-center">
+          <FaSpinner className="animate-spin text-4xl text-purple-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Loading your reports...</p>
+        </div>
+      ) : !loggedIn ? (
+        /* Not Logged In */
+        <div className="bg-white rounded-xl shadow-lg p-12 max-w-4xl mx-auto w-full text-center">
+          <FaExclamationCircle className="text-5xl text-purple-300 mx-auto mb-4" />
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Not Logged In</h2>
+          <p className="text-gray-600 text-lg mb-6">Please sign in to view your reports.</p>
+          <button
+            onClick={() => window.location.href = "/signin-options"}
+            className="px-8 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+          >
+            Go to Sign In
+          </button>
         </div>
       ) : (
         /* 📋 REPORT TABLE */
         <div className="space-y-6">
+          {/* Student Info Banner */}
+          {studentInfo && (
+            <div className="bg-purple-50 rounded-xl shadow-lg p-6 border border-purple-200">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+                    <FaUserCircle className="text-purple-600 text-3xl" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-purple-800">{studentInfo.name}</h2>
+                    <p className="text-purple-600">Roll No: {studentInfo.rollNo || studentInfo.rollNumber} • Room: {studentInfo.roomNo}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <span className="bg-purple-100 text-purple-800 px-4 py-2 rounded-full">
+                    {studentInfo.hostel || studentInfo.hostelName || "Hostel"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-xl shadow p-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-purple-700">
-                  My Reports (ID: {studentId})
+                  My Reports {studentId && `(${studentId})`}
                 </h2>
                 <p className="text-gray-600 mt-1">
                   {reports.length} report{reports.length !== 1 ? 's' : ''} found
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span className="text-sm">High</span>
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm">Medium</span>
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Low</span>
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span className="text-sm">High: {stats.high}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="text-sm">Medium: {stats.medium}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">Low: {stats.low}</span>
+                  </div>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-2"
-                >
-                  <FaSignOutAlt />
-                  <span>Logout</span>
-                </button>
               </div>
             </div>
 
@@ -228,7 +436,7 @@ function ReportsPage() {
                   </thead>
                   <tbody>
                     {reports.map((report, index) => (
-                      <tr key={report._id} className="border-t hover:bg-gray-50 transition-colors">
+                      <tr key={report._id || index} className="border-t hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-4">{index + 1}</td>
                         <td className="py-3 px-4 font-medium">{report.name}</td>
                         <td className="py-3 px-4 font-mono">{report.id}</td>
@@ -240,10 +448,10 @@ function ReportsPage() {
                         </td>
                         <td className="py-3 px-4">
                           <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getSeverityColor(report.severity)}`}>
-                            {report.severity.charAt(0).toUpperCase() + report.severity.slice(1)}
+                            {report.severity?.charAt(0).toUpperCase() + report.severity?.slice(1) || "Unknown"}
                           </span>
                         </td>
-                        <td className="py-3 px-4">{report.date}</td>
+                        <td className="py-3 px-4">{formatDate(report.date)}</td>
                         <td className="py-3 px-4">
                           <button
                             onClick={() => {
@@ -253,7 +461,7 @@ function ReportsPage() {
                                 `Student ID: ${report.id}\n` +
                                 `Issue Type: ${report.issueType}\n` +
                                 `Severity: ${report.severity}\n` +
-                                `Date: ${report.date}\n` +
+                                `Date: ${formatDate(report.date)}\n` +
                                 `Description: ${report.description || "No description"}\n` +
                                 `Action Taken: ${report.actionTaken || "No action specified"}`
                               );
@@ -272,7 +480,7 @@ function ReportsPage() {
               <div className="text-center py-12">
                 <FaExclamationCircle className="text-4xl text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-gray-600 mb-2">No Reports Found</h3>
-                <p className="text-gray-500">No disciplinary reports found for your account.</p>
+                <p className="text-gray-500">No reports found for your account.</p>
               </div>
             )}
 
@@ -281,25 +489,19 @@ function ReportsPage() {
               <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Total Reports</p>
-                  <p className="text-2xl font-bold text-gray-800">{reports.length}</p>
+                  <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
                 </div>
                 <div className="bg-red-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">High Severity</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {reports.filter(r => r.severity === "high").length}
-                  </p>
+                  <p className="text-2xl font-bold text-red-600">{stats.high}</p>
                 </div>
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Medium Severity</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {reports.filter(r => r.severity === "medium").length}
-                  </p>
+                  <p className="text-2xl font-bold text-yellow-600">{stats.medium}</p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Low Severity</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {reports.filter(r => r.severity === "low").length}
-                  </p>
+                  <p className="text-2xl font-bold text-green-600">{stats.low}</p>
                 </div>
               </div>
             )}
@@ -315,7 +517,7 @@ function ReportsPage() {
               <li>• Reports are maintained by the hostel administration</li>
               <li>• You can contact the warden for clarification on any report</li>
               <li>• Serious reports may affect your hostel privileges</li>
-              <li>• Keep your Student ID confidential to protect your data</li>
+              <li>• Keep your credentials confidential to protect your data</li>
             </ul>
           </div>
         </div>
@@ -329,7 +531,7 @@ export default function StudentLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeMenu, setActiveMenu] = useState(""); // Changed from "My Account" to empty string
+  const [activeMenu, setActiveMenu] = useState(""); 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [studentInfo, setStudentInfo] = useState(null);
   const [studentId, setStudentId] = useState("");
@@ -350,12 +552,22 @@ export default function StudentLayout() {
 
   /* ---------- CHECK IF ALREADY LOGGED IN ---------- */
   useEffect(() => {
-    const savedStudent = localStorage.getItem("studentInfo");
-    const savedId = localStorage.getItem("studentId");
+    const savedStudent = localStorage.getItem("studentInfo") || sessionStorage.getItem("studentInfo");
+    const savedId = localStorage.getItem("studentId") || sessionStorage.getItem("studentId");
+    const savedPhone = localStorage.getItem("studentPhone") || sessionStorage.getItem("studentPhone");
+    const savedRollNo = localStorage.getItem("studentRollNo") || sessionStorage.getItem("studentRollNo");
+    
+    console.log("StudentLayout - Checking login:", { savedStudent, savedId, savedPhone, savedRollNo });
+    
     if (savedStudent && savedId) {
-      setStudentInfo(JSON.parse(savedStudent));
-      setStudentId(savedId);
-      setIsLoggedIn(true);
+      try {
+        const studentData = JSON.parse(savedStudent);
+        setStudentInfo(studentData);
+        setStudentId(savedId);
+        setIsLoggedIn(true);
+      } catch (e) {
+        console.log("Error parsing student info:", e);
+      }
     }
   }, []);
 
@@ -366,7 +578,7 @@ export default function StudentLayout() {
     { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
     { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
     { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
-    { label: "Function", icon: <FaClipboardList />, path: "/admin/total-complaint" },
+    { label: "Function", icon: <FaClipboardList />, path: "/functions" },
     { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
     { label: "Setting", icon: <FaCog />, path: "/student-setting" },
   ];
@@ -382,10 +594,22 @@ export default function StudentLayout() {
     setIsLoggedIn(false);
     setStudentInfo(null);
     setStudentId("");
+    
+    // Clear all storage
     localStorage.removeItem("studentInfo");
     localStorage.removeItem("studentId");
+    localStorage.removeItem("token");
     localStorage.removeItem("reportStudentId");
     localStorage.removeItem("reportStudentData");
+    localStorage.removeItem("studentPhone");
+    localStorage.removeItem("studentRollNo");
+    
+    sessionStorage.removeItem("studentInfo");
+    sessionStorage.removeItem("studentId");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("studentPhone");
+    sessionStorage.removeItem("studentRollNo");
+    
     setDropdownOpen(false);
     navigate("/");
   };

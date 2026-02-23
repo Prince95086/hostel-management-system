@@ -27,7 +27,7 @@ export default function Setting() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeMenu, setActiveMenu] = useState("Setting"); // Changed to "Setting"
+  const [activeMenu, setActiveMenu] = useState("Setting");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -47,12 +47,12 @@ export default function Setting() {
   /* ---------- SIDEBAR MENU ---------- */
   const menuItems = [
     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" }, // Fixed path
+    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
     { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
     { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-    { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" }, // Removed /admin prefix
-    { label: "Function", icon: <FaClipboardList />, path: "#" }, // Changed to "#"
-    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" }, // Removed /admin prefix
+    { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
+    { label: "Function", icon: <FaClipboardList />, path: "/functions" },
+    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" },
     { label: "Setting", icon: <FaCog />, path: "/student-setting" },
   ];
 
@@ -81,13 +81,7 @@ export default function Setting() {
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);
     
-    // Don't navigate for Function button (it's always shown)
-    if (label === "Function") {
-      if (isMobile) setSidebarOpen(false);
-      return;
-    }
-    
-    // Navigate for other buttons
+    // Navigate to the path for all menu items
     if (path && path !== "#") {
       navigate(path);
       if (isMobile) setSidebarOpen(false);
@@ -228,8 +222,19 @@ export default function Setting() {
       // Clear all storage
       localStorage.removeItem("token");
       localStorage.removeItem("adminToken");
-      sessionStorage.removeItem("token");
+      localStorage.removeItem("studentInfo");
+      localStorage.removeItem("studentId");
+      localStorage.removeItem("studentPhone");
+      localStorage.removeItem("studentRollNo");
+      localStorage.removeItem("studentData");
       localStorage.removeItem("student");
+      localStorage.removeItem("activeMenu");
+      
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("studentInfo");
+      sessionStorage.removeItem("studentId");
+      sessionStorage.removeItem("studentPhone");
+      sessionStorage.removeItem("studentRollNo");
 
       // Dismiss loading toast
       toast.dismiss(loadingToastId);
@@ -396,15 +401,8 @@ export default function Setting() {
 
                   <button
                     type="button"
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors"
-                    onClick={() => {
-                      localStorage.removeItem("studentToken");
-                      localStorage.removeItem("token");
-                      sessionStorage.removeItem("token");
-                      localStorage.removeItem("student");
-                      setDropdownOpen(false);
-                      navigate("/");
-                    }}
+                    className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors mt-2 border-t border-gray-100"
+                    onClick={handleLogout}
                   >
                     <FaSignOutAlt className="inline mr-2" />
                     Logout

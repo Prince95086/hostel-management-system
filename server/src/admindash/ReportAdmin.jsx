@@ -560,22 +560,23 @@ export default function ReportAdmin() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h2 className="text-3xl font-bold text-gray-800">Report Management</h2>
-                <p className="text-gray-600 text-lg">Manage worker and student reports</p>
+                {/* Decreased width for Report Management heading */}
+                <h2 className="text-2xl font-bold text-gray-800 max-w-xs">Report Management</h2>
+                <p className="text-gray-600 text-base max-w-xs">Manage worker and student reports</p>
               </div>
               <div className="flex items-center gap-6">
-                <div className="text-lg">
+                <div className="text-base">
                   <span className="text-gray-500">Showing:</span>
-                  <span className="font-bold text-2xl ml-2">
+                  <span className="font-bold text-xl ml-2">
                     {filterType === "all" ? "All" : filterType === "worker" ? "Worker" : "Student"} Reports
-                    <span className="text-lg text-gray-500 ml-2">({filteredReports.length})</span>
+                    <span className="text-base text-gray-500 ml-2">({filteredReports.length})</span>
                   </span>
                 </div>
                 <button
                   onClick={() => setShowReportModal(true)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 text-lg"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 text-base"
                 >
-                  <FaFileAlt className="text-xl" />
+                  <FaFileAlt className="text-lg" />
                   Create New Report
                 </button>
               </div>
@@ -585,7 +586,7 @@ export default function ReportAdmin() {
             <div className="flex gap-4 mb-8">
               <button
                 onClick={() => setFilterType("all")}
-                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-colors flex items-center gap-2 ${
+                className={`px-6 py-3 rounded-lg font-semibold text-base transition-colors flex items-center gap-2 ${
                   filterType === "all"
                     ? "bg-blue-600 text-white shadow-lg"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -599,7 +600,7 @@ export default function ReportAdmin() {
               </button>
               <button
                 onClick={() => setFilterType("worker")}
-                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-colors flex items-center gap-2 ${
+                className={`px-6 py-3 rounded-lg font-semibold text-base transition-colors flex items-center gap-2 ${
                   filterType === "worker"
                     ? "bg-green-600 text-white shadow-lg"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -613,7 +614,7 @@ export default function ReportAdmin() {
               </button>
               <button
                 onClick={() => setFilterType("student")}
-                className={`px-6 py-3 rounded-lg font-semibold text-lg transition-colors flex items-center gap-2 ${
+                className={`px-6 py-3 rounded-lg font-semibold text-base transition-colors flex items-center gap-2 ${
                   filterType === "student"
                     ? "bg-purple-600 text-white shadow-lg"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -632,43 +633,43 @@ export default function ReportAdmin() {
               <div className="bg-blue-50 p-5 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600">Total Reports</p>
-                    <p className="text-3xl font-bold text-gray-800">{reports.length}</p>
+                    <p className="text-gray-600 text-sm">Total Reports</p>
+                    <p className="text-2xl font-bold text-gray-800">{reports.length}</p>
                   </div>
-                  <FaFileAlt className="text-3xl text-blue-500" />
+                  <FaFileAlt className="text-2xl text-blue-500" />
                 </div>
               </div>
               <div className="bg-green-50 p-5 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600">Worker Reports</p>
-                    <p className="text-3xl font-bold text-gray-800">
+                    <p className="text-gray-600 text-sm">Worker Reports</p>
+                    <p className="text-2xl font-bold text-gray-800">
                       {reports.filter(r => r.type === "worker").length}
                     </p>
                   </div>
-                  <FaUsers className="text-3xl text-green-500" />
+                  <FaUsers className="text-2xl text-green-500" />
                 </div>
               </div>
               <div className="bg-purple-50 p-5 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600">Student Reports</p>
-                    <p className="text-3xl font-bold text-gray-800">
+                    <p className="text-gray-600 text-sm">Student Reports</p>
+                    <p className="text-2xl font-bold text-gray-800">
                       {reports.filter(r => r.type === "student").length}
                     </p>
                   </div>
-                  <FaUsers className="text-3xl text-purple-500" />
+                  <FaUsers className="text-2xl text-purple-500" />
                 </div>
               </div>
               <div className="bg-red-50 p-5 rounded-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600">High Severity</p>
-                    <p className="text-3xl font-bold text-gray-800">
+                    <p className="text-gray-600 text-sm">High Severity</p>
+                    <p className="text-2xl font-bold text-gray-800">
                       {reports.filter(r => r.severity === "high").length}
                     </p>
                   </div>
-                  <FaExclamationTriangle className="text-3xl text-red-500" />
+                  <FaExclamationTriangle className="text-2xl text-red-500" />
                 </div>
               </div>
             </div>
@@ -678,22 +679,22 @@ export default function ReportAdmin() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-100 border-b">
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">S.No</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">Type</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">Name</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">ID</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">Date</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">Issue Type</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">Severity</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-lg">Actions</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">S.No</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Type</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Name</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">ID</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Date</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Issue Type</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Severity</th>
+                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredReports.map((report, index) => (
                       <tr key={report._id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="py-4 px-6 text-lg">{index + 1}</td>
+                        <td className="py-4 px-6 text-base">{index + 1}</td>
                         <td className="py-4 px-6">
-                          <span className={`px-4 py-2 rounded-full text-base font-medium ${
+                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${
                             report.type === "worker" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-purple-100 text-purple-800"
@@ -701,12 +702,12 @@ export default function ReportAdmin() {
                             {report.type === "worker" ? "Worker" : "Student"}
                           </span>
                         </td>
-                        <td className="py-4 px-6 font-medium text-lg">{report.name}</td>
-                        <td className="py-4 px-6 text-lg">{report.id}</td>
-                        <td className="py-4 px-6 text-lg">{report.date}</td>
-                        <td className="py-4 px-6 text-lg">{report.issueType}</td>
+                        <td className="py-4 px-6 font-medium text-base">{report.name}</td>
+                        <td className="py-4 px-6 text-base">{report.id}</td>
+                        <td className="py-4 px-6 text-base">{report.date}</td>
+                        <td className="py-4 px-6 text-base">{report.issueType}</td>
                         <td className="py-4 px-6">
-                          <span className={`px-4 py-2 rounded-full text-base font-medium ${getSeverityColor(report.severity)}`}>
+                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${getSeverityColor(report.severity)}`}>
                             {report.severity.charAt(0).toUpperCase() + report.severity.slice(1)}
                           </span>
                         </td>
@@ -714,24 +715,24 @@ export default function ReportAdmin() {
                           <div className="flex gap-3">
                             <button
                               onClick={() => handleViewReport(index)}
-                              className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="View Details"
                             >
-                              <FaEye className="text-xl" />
+                              <FaEye className="text-lg" />
                             </button>
                             <button
                               onClick={() => handleEditReport(index)}
-                              className="p-3 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                               title="Edit Report"
                             >
-                              <FaEdit className="text-xl" />
+                              <FaEdit className="text-lg" />
                             </button>
                             <button
                               onClick={() => handleDeleteReport(index)}
-                              className="p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Delete Report"
                             >
-                              <FaTrash className="text-xl" />
+                              <FaTrash className="text-lg" />
                             </button>
                           </div>
                         </td>
@@ -744,24 +745,24 @@ export default function ReportAdmin() {
               <div className="text-center py-16">
                 {filterType === "all" ? (
                   <>
-                    <FaFileAlt className="text-8xl text-gray-300 mx-auto mb-6" />
-                    <h3 className="text-2xl font-semibold text-gray-600 mb-3">No Reports Yet</h3>
-                    <p className="text-gray-500 text-lg mb-8">Create your first report by clicking the button below.</p>
+                    <FaFileAlt className="text-6xl text-gray-300 mx-auto mb-6" />
+                    <h3 className="text-xl font-semibold text-gray-600 mb-3">No Reports Yet</h3>
+                    <p className="text-gray-500 text-base mb-8">Create your first report by clicking the button below.</p>
                     <button
                       onClick={() => setShowReportModal(true)}
-                      className="px-8 py-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 mx-auto text-lg"
+                      className="px-8 py-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 mx-auto text-base"
                     >
-                      <FaFileAlt className="text-xl" />
+                      <FaFileAlt className="text-lg" />
                       Create First Report
                     </button>
                   </>
                 ) : (
                   <>
-                    <FaFilter className="text-8xl text-gray-300 mx-auto mb-6" />
-                    <h3 className="text-2xl font-semibold text-gray-600 mb-3">
+                    <FaFilter className="text-6xl text-gray-300 mx-auto mb-6" />
+                    <h3 className="text-xl font-semibold text-gray-600 mb-3">
                       No {filterType === "worker" ? "Worker" : "Student"} Reports Found
                     </h3>
-                    <p className="text-gray-500 text-lg mb-8">
+                    <p className="text-gray-500 text-base mb-8">
                       {filterType === "worker" 
                         ? "No worker reports have been created yet." 
                         : "No student reports have been created yet."}
@@ -769,15 +770,15 @@ export default function ReportAdmin() {
                     <div className="flex gap-4 justify-center">
                       <button
                         onClick={() => setFilterType("all")}
-                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center gap-2 text-lg"
+                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center gap-2 text-base"
                       >
                         View All Reports
                       </button>
                       <button
                         onClick={() => setShowReportModal(true)}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 text-lg"
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 text-base"
                       >
-                        <FaFileAlt className="text-xl" />
+                        <FaFileAlt className="text-lg" />
                         Create {filterType === "worker" ? "Worker" : "Student"} Report
                       </button>
                     </div>

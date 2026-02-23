@@ -10,6 +10,9 @@ import {
   FaShieldAlt,
   FaArrowRight,
   FaIdCard,
+  FaUtensils,
+  FaExclamationTriangle,
+  FaClock
 } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -19,7 +22,7 @@ import 'react-toastify/dist/ReactToastify.css';
 const StudentSignIn = () => {
   const navigate = useNavigate();
 
-  const [loginMethod, setLoginMethod] = useState("email"); // "email", "phone", or "rollNo"
+  const [loginMethod, setLoginMethod] = useState("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [rollNo, setRollNo] = useState("");
@@ -35,10 +38,15 @@ const StudentSignIn = () => {
     return re.test(email);
   };
 
-  // Roll number validation function - ONLY 4 DIGITS
+  // Phone validation function
+  const validatePhone = (phone) => {
+    const cleaned = phone.replace(/\s/g, '');
+    return /^\d{10}$/.test(cleaned);
+  };
+
+  // Roll number validation function - 1-4 digits
   const validateRollNo = (rollNo) => {
     const cleaned = rollNo.trim();
-    // Must be exactly 4 digits (like 99, 1234, etc.)
     return /^\d{1,4}$/.test(cleaned);
   };
 
@@ -49,72 +57,41 @@ const StudentSignIn = () => {
     // Validate based on login method
     if (loginMethod === "email") {
       if (!email.trim()) {
-        toast.error("Email is required", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error("Email is required");
         return;
       }
       if (!validateEmail(email.trim())) {
-        toast.error("Please enter a valid email address", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error("Please enter a valid email address");
         return;
       }
     } else if (loginMethod === "phone") {
       if (!phone.trim()) {
-        toast.error("Phone number is required", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error("Phone number is required");
         return;
       }
       const cleanedPhone = phone.replace(/\s/g, '');
-      if (cleanedPhone.length < 10 || cleanedPhone.length > 15) {
-        toast.error("Please enter a valid phone number (10-15 digits)", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-      if (!/^\d+$/.test(cleanedPhone)) {
-        toast.error("Phone number should contain only digits", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+      if (!validatePhone(cleanedPhone)) {
+        toast.error("Please enter a valid 10-digit phone number");
         return;
       }
     } else if (loginMethod === "rollNo") {
       if (!rollNo.trim()) {
-        toast.error("Roll Number is required", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error("Roll Number is required");
         return;
       }
       if (!validateRollNo(rollNo)) {
-        toast.error("Roll Number must be 1-4 digits (e.g., 99, 1234)", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error("Roll Number must be 1-4 digits (e.g., 99, 1234)");
         return;
       }
     }
 
     if (!password.trim()) {
-      toast.error("Password is required", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error("Password is required");
       return;
     }
 
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
@@ -126,14 +103,11 @@ const StudentSignIn = () => {
         loginMethod: loginMethod
       };
 
-      // Add the appropriate identifier based on login method
       if (loginMethod === "email") {
         payload.email = email.trim().toLowerCase();
       } else if (loginMethod === "phone") {
         payload.phone = phone.replace(/\s/g, '');
       } else if (loginMethod === "rollNo") {
-        // For 4-digit roll numbers, we can use it as is or add prefix
-        // Let's use it as is for now
         payload.rollNo = rollNo.trim();
       }
 
@@ -142,26 +116,44 @@ const StudentSignIn = () => {
         payload
       );
 
-      // Save token and student data
-      if (rememberMe) {
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("student", JSON.stringify(res.data.student));
-        localStorage.setItem("studentId", res.data.student.rollNo || res.data.student._id);
-      } else {
-        sessionStorage.setItem("token", res.data.token);
-        sessionStorage.setItem("student", JSON.stringify(res.data.student));
-        sessionStorage.setItem("studentId", res.data.student.rollNo || res.data.student._id);
+      // Save student data based on login method
+      const studentData = {
+        ...res.data.student,
+        loginMethod: loginMethod,
+        rollNo: loginMethod === "rollNo" ? rollNo.trim() : res.data.student.rollNo,
+        loginId: loginMethod === "email" ? email.trim() : 
+                 loginMethod === "phone" ? phone.replace(/\s/g, '') : 
+                 rollNo.trim()
+      };
+
+      // Save to localStorage or sessionStorage based on rememberMe
+      const storage = rememberMe ? localStorage : sessionStorage;
+      
+      storage.setItem("token", res.data.token);
+      storage.setItem("student", JSON.stringify(studentData));
+      storage.setItem("studentId", loginMethod === "rollNo" ? rollNo.trim() : res.data.student.rollNo || res.data.student._id);
+      storage.setItem("studentInfo", JSON.stringify(studentData));
+      
+      // Save phone number for complaints access
+      if (loginMethod === "phone") {
+        storage.setItem("studentPhone", phone.replace(/\s/g, ''));
+      } else if (studentData.phone) {
+        storage.setItem("studentPhone", studentData.phone);
+      }
+      
+      // Save roll number for complaints access
+      if (loginMethod === "rollNo") {
+        storage.setItem("studentRollNo", rollNo.trim());
+      } else if (studentData.rollNo) {
+        storage.setItem("studentRollNo", studentData.rollNo);
       }
 
       // Show success toast
-      toast.success("Login successful! Redirecting...", {
-        position: "top-right",
-        autoClose: 2000,
-      });
+      toast.success("Login successful! Redirecting to your account...", { autoClose: 1500 });
 
-      // Navigate after delay
+      // Navigate to My Account for ALL login methods
       setTimeout(() => {
-        navigate("/student-portal");
+        navigate("/my-account");
       }, 1500);
 
     } catch (error) {
@@ -184,12 +176,7 @@ const StudentSignIn = () => {
       }
       
       setErrorMsg(errorMessage);
-      
-      // Show error toast
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -200,7 +187,6 @@ const StudentSignIn = () => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 10) value = value.slice(0, 10);
     
-    // Format with spaces
     if (value.length > 6) {
       value = `${value.slice(0, 5)} ${value.slice(5, 10)}`;
     } else if (value.length > 3) {
@@ -213,8 +199,8 @@ const StudentSignIn = () => {
 
   // Format roll number - only allow digits, max 4
   const handleRollNoChange = (e) => {
-    let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-    if (value.length > 4) value = value.slice(0, 4); // Max 4 digits
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 4) value = value.slice(0, 4);
     setRollNo(value);
     setErrorMsg("");
   };
@@ -223,7 +209,6 @@ const StudentSignIn = () => {
   const handleMethodChange = (method) => {
     setLoginMethod(method);
     setErrorMsg("");
-    // Clear other fields when switching methods
     if (method === "email") {
       setPhone("");
       setRollNo("");
@@ -248,15 +233,11 @@ const StudentSignIn = () => {
       setRollNo("99");
       setPassword("password123");
     }
-    toast.info("Demo credentials filled!", {
-      position: "top-right",
-      autoClose: 2000,
-    });
+    toast.info("Demo credentials filled!", { autoClose: 2000 });
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Toast Container */}
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -281,7 +262,7 @@ const StudentSignIn = () => {
             Student Portal
           </h1>
           <p className="text-gray-600">
-            Sign in to access your hostel information
+            Sign in with Email, Phone Number, or Roll Number
           </p>
         </div>
 
@@ -469,8 +450,7 @@ const StudentSignIn = () => {
                 </>
               ) : (
                 <>
-                  Sign In
-                  <FaArrowRight className="group-hover:translate-x-1 transition-transform duration-300" />
+                  Sign In <FaArrowRight className="ml-2 group-hover:translate-x-1 transition-transform duration-300" />
                 </>
               )}
             </button>
@@ -486,7 +466,7 @@ const StudentSignIn = () => {
           {/* Quick Login Suggestions */}
           <div className="space-y-3">
             <div className="text-center text-sm text-gray-600 mb-4">
-              <p>Use the method that's most convenient for you:</p>
+              <p>Choose your preferred login method:</p>
             </div>
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
@@ -497,7 +477,7 @@ const StudentSignIn = () => {
                     </div>
                     <div>
                       <p className="font-medium text-gray-800">Roll Number</p>
-                      <p className="text-xs text-gray-600">Simple 1-4 digit number</p>
+                      <p className="text-xs text-gray-600">1-4 digit number</p>
                     </div>
                   </div>
                   <button
@@ -518,7 +498,7 @@ const StudentSignIn = () => {
                     </div>
                     <div>
                       <p className="font-medium text-gray-800">Email</p>
-                      <p className="text-xs text-gray-600">For registered email users</p>
+                      <p className="text-xs text-gray-600">University email</p>
                     </div>
                   </div>
                   <button
@@ -539,7 +519,7 @@ const StudentSignIn = () => {
                     </div>
                     <div>
                       <p className="font-medium text-gray-800">Phone</p>
-                      <p className="text-xs text-gray-600">For mobile number users</p>
+                      <p className="text-xs text-gray-600">10-digit number</p>
                     </div>
                   </div>
                   <button

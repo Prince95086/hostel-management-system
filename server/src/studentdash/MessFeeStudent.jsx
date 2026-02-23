@@ -36,7 +36,8 @@ import {
   FaUniversity,
   FaQrcode,
   FaLock,
-  FaArrowLeft
+  FaArrowLeft,
+  FaIdCard
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
@@ -47,6 +48,8 @@ export default function MessFeeStudent() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeMenu, setActiveMenu] = useState("Mess Fee");
+  const [studentInfo, setStudentInfo] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,17 +65,39 @@ export default function MessFeeStudent() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  /* ---------- CHECK IF ALREADY LOGGED IN FROM SIGN-IN PAGE ---------- */
+  useEffect(() => {
+    // Check both localStorage and sessionStorage
+    const storedStudent = localStorage.getItem("studentInfo") || sessionStorage.getItem("studentInfo");
+    const storedPhone = localStorage.getItem("studentPhone") || sessionStorage.getItem("studentPhone");
+    
+    if (storedStudent) {
+      try {
+        const studentData = JSON.parse(storedStudent);
+        setStudentInfo(studentData);
+        setIsLoggedIn(true);
+        
+        // If phone is not in studentInfo but we have storedPhone, add it
+        if (!studentData.phone && storedPhone) {
+          studentData.phone = storedPhone;
+        }
+      } catch (e) {
+        console.error("Error parsing student info:", e);
+      }
+    }
+  }, []);
+
   /* ---------- SIDEBAR MENU ---------- */
-  const menuItems = [
-    { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-    { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
-    { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
-    { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-    { label: "Reports", icon: <FaChartLine />, path: "/reports" },
-    { label: "Function", icon: <FaClipboardList />, path: "#" },
-    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" },
-    { label: "Setting", icon: <FaCog />, path: "/student-setting" },
-  ];
+   const menuItems = [
+      { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
+      { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
+      { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
+      { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
+      { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
+      { label: "Function", icon: <FaClipboardList />, path: "/admin/total-complaint" },
+      { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
+      { label: "Setting", icon: <FaCog />, path: "/student-setting" },
+    ];
 
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);
@@ -107,19 +132,41 @@ export default function MessFeeStudent() {
     else if (path === "/my-account") setActiveMenu("My Account");
   }, [location]);
 
+  // Handle logout
+  const handleLogout = () => {
+    // Clear all storage
+    localStorage.removeItem("studentInfo");
+    localStorage.removeItem("studentId");
+    localStorage.removeItem("studentPhone");
+    localStorage.removeItem("studentData");
+    localStorage.removeItem("token");
+    localStorage.removeItem("reportStudentId");
+    localStorage.removeItem("reportStudentData");
+    
+    sessionStorage.removeItem("studentInfo");
+    sessionStorage.removeItem("studentId");
+    sessionStorage.removeItem("studentPhone");
+    sessionStorage.removeItem("token");
+    
+    setStudentInfo(null);
+    setIsLoggedIn(false);
+    setDropdownOpen(false);
+    navigate("/");
+  };
+
   // Render content based on active menu
   const renderContent = () => {
     switch (activeMenu) {
       case "Mess Fee":
-        return <MessFeeContent />;
+        return <MessFeeContent studentInfo={studentInfo} isLoggedIn={isLoggedIn} />;
       case "My Account":
-        return <MyAccountContent />;
+        return <MyAccountContent studentInfo={studentInfo} />;
       case "Pay Fee":
-        return <PayFeeContent />;
+        return <PayFeeContent studentInfo={studentInfo} isLoggedIn={isLoggedIn} />;
       case "Canteen Fee":
-        return <CanteenFeeContent />;
+        return <CanteenFeeContent studentInfo={studentInfo} isLoggedIn={isLoggedIn} />;
       default:
-        return <DefaultContent />;
+        return <DefaultContent studentInfo={studentInfo} isLoggedIn={isLoggedIn} />;
     }
   };
 
@@ -157,6 +204,19 @@ export default function MessFeeStudent() {
             </ul>
           </nav>
         </div>
+
+        {/* Student Info in Sidebar if logged in */}
+        {isLoggedIn && studentInfo && (
+          <div className="p-4 border-t border-orange-500">
+            <div className="flex items-center space-x-3">
+              <FaUserCircle className="text-2xl" />
+              <div>
+                <p className="font-semibold truncate">{studentInfo.name || "Student"}</p>
+                <p className="text-sm opacity-90">ID: {studentInfo.rollNo || studentInfo._id}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* ================= MAIN ================= */}
@@ -205,6 +265,12 @@ export default function MessFeeStudent() {
 
                 {dropdownOpen && (
                   <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-48 py-2 z-50">
+                    {isLoggedIn && studentInfo && (
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="font-semibold text-gray-800 truncate">{studentInfo.name || "Student"}</p>
+                        <p className="text-sm text-gray-500 truncate">ID: {studentInfo.rollNo || studentInfo._id}</p>
+                      </div>
+                    )}
                     <button
                       type="button"
                       className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
@@ -229,14 +295,8 @@ export default function MessFeeStudent() {
 
                     <button
                       type="button"
-                      className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors"
-                      onClick={() => {
-                        localStorage.removeItem("studentPhone");
-                        localStorage.removeItem("studentData");
-                        localStorage.removeItem("studentToken");
-                        setDropdownOpen(false);
-                        navigate("/");
-                      }}
+                      className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors mt-2 border-t border-gray-100"
+                      onClick={handleLogout}
                     >
                       Logout
                     </button>
@@ -264,10 +324,324 @@ export default function MessFeeStudent() {
   );
 }
 
-// ==================== PAY FEE CONTENT COMPONENT ====================
-function PayFeeContent() {
+// ==================== MESS FEE CONTENT COMPONENT (UPDATED) ====================
+function MessFeeContent({ studentInfo, isLoggedIn }) {
   const [phone, setPhone] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [fees, setFees] = useState([]);
+  const [student, setStudent] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [autoLoaded, setAutoLoaded] = useState(false);
+
+  // Auto-load data if student is already logged in from sign-in page
+  useEffect(() => {
+    const loadStudentData = async () => {
+      if (isLoggedIn && studentInfo && !autoLoaded) {
+        setLoading(true);
+        
+        // Get phone number from studentInfo
+        const studentPhone = studentInfo.phone || 
+                            studentInfo.phoneNo || 
+                            localStorage.getItem("studentPhone") || 
+                            sessionStorage.getItem("studentPhone");
+        
+        if (studentPhone) {
+          setPhone(studentPhone);
+          await fetchStudentData(studentPhone);
+        } else {
+          // If no phone, try using roll number or ID
+          const studentId = studentInfo.rollNo || studentInfo._id;
+          if (studentId) {
+            await fetchStudentById(studentId);
+          }
+        }
+        setAutoLoaded(true);
+      }
+    };
+
+    loadStudentData();
+  }, [isLoggedIn, studentInfo, autoLoaded]);
+
+  const fetchStudentData = async (phoneNumber) => {
+    setError("");
+    try {
+      const studentRes = await axios.get(
+        `http://localhost:5000/api/students/phone/${phoneNumber}`
+      );
+      setStudent(studentRes.data);
+
+      const feeRes = await axios.get(
+        `http://localhost:5000/api/students/${studentRes.data._id}/mess-fees`
+      );
+      setFees(feeRes.data);
+
+    } catch (err) {
+      console.error("Auto-load error:", err);
+      setError("Could not load fee data automatically. Please search manually.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStudentById = async (studentId) => {
+    try {
+      // Try to get student by ID
+      const studentRes = await axios.get(
+        `http://localhost:5000/api/students/${studentId}`
+      );
+      setStudent(studentRes.data);
+
+      const feeRes = await axios.get(
+        `http://localhost:5000/api/students/${studentId}/mess-fees`
+      );
+      setFees(feeRes.data);
+
+    } catch (err) {
+      console.error("Auto-load by ID error:", err);
+      setError("Could not load fee data automatically. Please search manually.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setError("");
+    setFees([]);
+    setStudent(null);
+
+    if (phone.length < 10) {
+      setError("Enter valid phone number");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const studentRes = await axios.get(
+        `http://localhost:5000/api/students/phone/${phone}`
+      );
+      setStudent(studentRes.data);
+
+      const feeRes = await axios.get(
+        `http://localhost:5000/api/students/${studentRes.data._id}/mess-fees`
+      );
+      setFees(feeRes.data);
+
+    } catch (err) {
+      console.error("Search error:", err);
+      setError("Student not found or no records available");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalRecords = fees.length;
+  const totalAmount = fees.reduce((sum, record) => sum + (record.totalAmount || 0), 0);
+  const totalPaid = fees.reduce((sum, record) => sum + (record.paidAmount || 0), 0);
+  const totalDue = fees.reduce((sum, record) => sum + (record.dueAmount || 0), 0);
+  const paidRecords = fees.filter(record => record.status === "Paid").length;
+  const pendingRecords = fees.filter(record => record.status === "Pending").length;
+  const partialRecords = fees.filter(record => record.status === "Partial").length;
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Paid": return "bg-green-100 text-green-800";
+      case "Partial": return "bg-yellow-100 text-yellow-800";
+      case "Pending": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const handlePrint = () => window.print();
+
+  const handleDownload = () => {
+    if (fees.length === 0) {
+      alert("No data to download");
+      return;
+    }
+    
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      "Month,Year,Total Amount,Paid Amount,Due Amount,Payment Date,Payment Method,Status,Receipt No,Remarks\n" +
+      fees.map(row => 
+        `${row.month},${row.year},${row.totalAmount},${row.paidAmount},${row.dueAmount},"${row.paymentDate ? new Date(row.paymentDate).toLocaleDateString() : 'N/A'}",${row.paymentMethod},${row.status},${row.receiptNo || 'N/A'},"${row.remarks || ''}"`
+      ).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "mess_fee_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Show welcome message for logged in students
+  if (isLoggedIn && !student && loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Mess Fee Records</h1>
+          <div className="text-sm text-gray-600">Loading your mess fee data...</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-12 text-center">
+          <FaSpinner className="animate-spin text-4xl text-orange-500 mx-auto mb-4" />
+          <p className="text-gray-600">Loading your mess fee records...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Mess Fee Records</h1>
+        <div className="text-sm text-gray-600">
+          {isLoggedIn ? "View your mess fee payment history" : "View and manage mess fee payments"}
+        </div>
+      </div>
+
+      {!student && (
+        <div className="bg-white rounded-xl shadow p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            {isLoggedIn ? "Search by Phone Number" : "Search Student by Phone Number"}
+          </h2>
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Enter student phone number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center space-x-2"
+              >
+                {loading ? <><FaSpinner className="animate-spin" /><span>Searching...</span></> : <><FaSearch /><span>Search</span></>}
+              </button>
+            </div>
+            {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600">{error}</p></div>}
+          </form>
+        </div>
+      )}
+
+      {student && (
+        <>
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+              <FaUserCircle className="text-blue-600 text-5xl" />
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-gray-800">{student.name}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                  <div><p className="text-gray-600 text-sm">Phone</p><p className="font-semibold">{student.phone}</p></div>
+                  <div><p className="text-gray-600 text-sm">Room</p><p className="font-semibold">Room {student.roomNo}</p></div>
+                  <div><p className="text-gray-600 text-sm">Roll No</p><p className="font-semibold">{student.rollNo}</p></div>
+                </div>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600">Total Records</p>
+                <p className="text-2xl font-bold text-blue-600">{totalRecords}</p>
+              </div>
+            </div>
+          </div>
+
+          {fees.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl shadow p-5">
+                  <div className="flex items-center justify-between">
+                    <div><p className="text-sm text-gray-600">Total Amount</p><p className="text-2xl font-bold text-orange-600">₹{totalAmount.toLocaleString()}</p></div>
+                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center"><FaRupeeSign className="text-orange-600 text-xl" /></div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl shadow p-5">
+                  <div className="flex items-center justify-between">
+                    <div><p className="text-sm text-gray-600">Total Paid</p><p className="text-2xl font-bold text-green-600">₹{totalPaid.toLocaleString()}</p></div>
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center"><FaCheckCircle className="text-green-600 text-xl" /></div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl shadow p-5">
+                  <div className="flex items-center justify-between">
+                    <div><p className="text-sm text-gray-600">Total Due</p><p className="text-2xl font-bold text-red-600">₹{totalDue.toLocaleString()}</p></div>
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center"><FaExclamation className="text-red-600 text-xl" /></div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl shadow p-5">
+                  <div className="flex items-center justify-between">
+                    <div><p className="text-sm text-gray-600">Records</p><p className="text-2xl font-bold text-gray-800">{totalRecords}</p></div>
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center"><FaCalendarAlt className="text-blue-600 text-xl" /></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow overflow-hidden">
+                <div className="p-6 border-b">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">Monthly Mess Fee Records</h3>
+                      <p className="text-gray-600 mt-1">Payment details for {student.name}</p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <button onClick={handlePrint} className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center space-x-2"><FaPrint /><span>Print</span></button>
+                      <button onClick={handleDownload} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"><FaDownload /><span>Download</span></button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="py-3 px-4 text-left">Month/Year</th>
+                        <th className="py-3 px-4 text-left">Total</th>
+                        <th className="py-3 px-4 text-left">Paid</th>
+                        <th className="py-3 px-4 text-left">Due</th>
+                        <th className="py-3 px-4 text-left">Payment Date</th>
+                        <th className="py-3 px-4 text-left">Method</th>
+                        <th className="py-3 px-4 text-left">Status</th>
+                        <th className="py-3 px-4 text-left">Receipt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fees.map((record) => (
+                        <tr key={record._id} className="border-t hover:bg-gray-50">
+                          <td className="py-3 px-4">{record.month} {record.year}</td>
+                          <td className="py-3 px-4 font-bold">₹{record.totalAmount?.toLocaleString()}</td>
+                          <td className="py-3 px-4 text-green-600">₹{record.paidAmount?.toLocaleString()}</td>
+                          <td className="py-3 px-4 text-red-600">₹{record.dueAmount?.toLocaleString()}</td>
+                          <td className="py-3 px-4">{record.paymentDate ? new Date(record.paymentDate).toLocaleDateString() : "-"}</td>
+                          <td className="py-3 px-4">{record.paymentMethod || "-"}</td>
+                          <td className="py-3 px-4"><span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(record.status)}`}>{record.status}</span></td>
+                          <td className="py-3 px-4 font-mono text-blue-600">{record.receiptNo || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bg-white rounded-xl shadow p-8 text-center">
+              <FaUtensils className="text-4xl text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">No Fee Records Found</h3>
+              <p className="text-gray-600">No mess fee records found for this student</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ==================== PAY FEE CONTENT COMPONENT (UPDATED) ====================
+function PayFeeContent({ studentInfo, isLoggedIn }) {
+  const [phone, setPhone] = useState("");
+  const [isLoggedInLocal, setIsLoggedInLocal] = useState(false);
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -280,20 +654,44 @@ function PayFeeContent() {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState("mess");
   const [selectAll, setSelectAll] = useState(false);
+  const [autoLoaded, setAutoLoaded] = useState(false);
 
-  // Check if already logged in
+  // Check if already logged in from parent
   useEffect(() => {
-    const savedPhone = localStorage.getItem("studentPhone");
-    const savedStudent = localStorage.getItem("studentData");
-    
-    if (savedPhone && savedStudent) {
-      setPhone(savedPhone);
-      const studentData = JSON.parse(savedStudent);
-      setStudent(studentData);
-      setIsLoggedIn(true);
-      fetchFees(studentData._id);
+    if (isLoggedIn && studentInfo && !autoLoaded) {
+      const studentPhone = studentInfo.phone || 
+                          studentInfo.phoneNo || 
+                          localStorage.getItem("studentPhone") || 
+                          sessionStorage.getItem("studentPhone");
+      
+      if (studentPhone) {
+        setPhone(studentPhone);
+        handleAutoLogin(studentPhone);
+      }
+      setAutoLoaded(true);
     }
-  }, []);
+  }, [isLoggedIn, studentInfo, autoLoaded]);
+
+  const handleAutoLogin = async (phoneNumber) => {
+    setLoading(true);
+    try {
+      const studentRes = await axios.get(
+        `http://localhost:5000/api/students/phone/${phoneNumber}`
+      );
+      
+      const studentData = studentRes.data;
+      setStudent(studentData);
+      setIsLoggedInLocal(true);
+      
+      // Fetch fees
+      await fetchFees(studentData._id);
+      
+    } catch (err) {
+      console.error("Auto-login error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -306,18 +704,16 @@ function PayFeeContent() {
 
     setLoading(true);
     try {
-      // Get student by phone
       const studentRes = await axios.get(
         `http://localhost:5000/api/students/phone/${phone}`
       );
       
       const studentData = studentRes.data;
       setStudent(studentData);
-      setIsLoggedIn(true);
+      setIsLoggedInLocal(true);
       localStorage.setItem("studentPhone", phone);
       localStorage.setItem("studentData", JSON.stringify(studentData));
       
-      // Fetch fees
       await fetchFees(studentData._id);
       
     } catch (err) {
@@ -330,13 +726,11 @@ function PayFeeContent() {
 
   const fetchFees = async (studentId) => {
     try {
-      // Fetch mess fees
       const messRes = await axios.get(
         `http://localhost:5000/api/students/${studentId}/mess-fees`
       );
       setMessFees(messRes.data);
 
-      // Fetch canteen fees
       const canteenRes = await axios.get(
         `http://localhost:5000/api/students/${studentId}/canteen-fees`
       );
@@ -348,14 +742,12 @@ function PayFeeContent() {
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
+    setIsLoggedInLocal(false);
     setStudent(null);
     setPhone("");
     setMessFees([]);
     setCanteenFees([]);
     setSelectedFees([]);
-    localStorage.removeItem("studentPhone");
-    localStorage.removeItem("studentData");
   };
 
   const handleFeeSelection = (fee, type) => {
@@ -374,11 +766,9 @@ function PayFeeContent() {
     const pendingFees = fees.filter(f => f.status === "Pending" || f.status === "Partial");
     
     if (selectAll) {
-      // Deselect all of this type
       setSelectedFees(selectedFees.filter(f => f.feeType !== type));
       setSelectAll(false);
     } else {
-      // Select all pending fees of this type
       const newSelected = [...selectedFees];
       pendingFees.forEach(fee => {
         const exists = newSelected.some(f => f._id === fee._id && f.feeType === type);
@@ -408,18 +798,13 @@ function PayFeeContent() {
     setProcessingPayment(true);
 
     try {
-      // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Here you would make API calls to update payment status for each selected fee
-      // For demo, we'll just show success
       
       setProcessingPayment(false);
       setShowPaymentModal(false);
       setPaymentSuccess(true);
       setSelectedFees([]);
       
-      // Refresh fees after payment
       await fetchFees(student._id);
       
       setTimeout(() => setPaymentSuccess(false), 3000);
@@ -448,7 +833,6 @@ function PayFeeContent() {
     }
   };
 
-  // Calculate totals
   const messPending = messFees.filter(f => f.status === "Pending" || f.status === "Partial");
   const canteenPending = canteenFees.filter(f => f.status === "Pending" || f.status === "Partial");
   
@@ -456,8 +840,20 @@ function PayFeeContent() {
   const totalCanteenDue = canteenPending.reduce((sum, f) => sum + (f.dueAmount || f.totalAmount || 0), 0);
   const totalDue = totalMessDue + totalCanteenDue;
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <FaSpinner className="animate-spin text-4xl text-orange-500 mx-auto mb-4" />
+          <p className="text-gray-600">Loading your fee data...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Login Form
-  if (!isLoggedIn) {
+  if (!isLoggedInLocal && !isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
@@ -927,243 +1323,49 @@ function PayFeeContent() {
   );
 }
 
-// ==================== MESS FEE CONTENT COMPONENT ====================
-function MessFeeContent() {
+// ==================== CANTEEN FEE CONTENT COMPONENT (UPDATED) ====================
+function CanteenFeeContent({ studentInfo, isLoggedIn }) {
   const [phone, setPhone] = useState("");
   const [fees, setFees] = useState([]);
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [autoLoaded, setAutoLoaded] = useState(false);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setError("");
-    setFees([]);
-    setStudent(null);
+  // Auto-load data if student is already logged in from sign-in page
+  useEffect(() => {
+    const loadStudentData = async () => {
+      if (isLoggedIn && studentInfo && !autoLoaded) {
+        setLoading(true);
+        
+        const studentPhone = studentInfo.phone || 
+                            studentInfo.phoneNo || 
+                            localStorage.getItem("studentPhone") || 
+                            sessionStorage.getItem("studentPhone");
+        
+        if (studentPhone) {
+          setPhone(studentPhone);
+          await fetchStudentData(studentPhone);
+        }
+        setAutoLoaded(true);
+      }
+    };
 
-    if (phone.length < 10) {
-      setError("Enter valid phone number");
-      return;
-    }
+    loadStudentData();
+  }, [isLoggedIn, studentInfo, autoLoaded]);
 
-    setLoading(true);
+  const fetchStudentData = async (phoneNumber) => {
     try {
-      const studentRes = await axios.get(
-        `http://localhost:5000/api/students/phone/${phone}`
-      );
+      const studentRes = await axios.get(`http://localhost:5000/api/students/phone/${phoneNumber}`);
       setStudent(studentRes.data);
-
-      const feeRes = await axios.get(
-        `http://localhost:5000/api/students/${studentRes.data._id}/mess-fees`
-      );
+      const feeRes = await axios.get(`http://localhost:5000/api/students/${studentRes.data._id}/canteen-fees`);
       setFees(feeRes.data);
-
     } catch (err) {
-      console.error("Search error:", err);
-      setError("Student not found or no records available");
+      setError("Could not load canteen fee data automatically");
     } finally {
       setLoading(false);
     }
   };
-
-  const totalRecords = fees.length;
-  const totalAmount = fees.reduce((sum, record) => sum + (record.totalAmount || 0), 0);
-  const totalPaid = fees.reduce((sum, record) => sum + (record.paidAmount || 0), 0);
-  const totalDue = fees.reduce((sum, record) => sum + (record.dueAmount || 0), 0);
-  const paidRecords = fees.filter(record => record.status === "Paid").length;
-  const pendingRecords = fees.filter(record => record.status === "Pending").length;
-  const partialRecords = fees.filter(record => record.status === "Partial").length;
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Paid": return "bg-green-100 text-green-800";
-      case "Partial": return "bg-yellow-100 text-yellow-800";
-      case "Pending": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getPaymentMethodIcon = (method) => {
-    switch (method) {
-      case "Cash": return <FaMoneyBillWave className="text-green-600" />;
-      case "Online": return <FaRupeeSign className="text-blue-600" />;
-      case "Cheque": return <FaFileInvoice className="text-purple-600" />;
-      default: return <FaRupeeSign className="text-gray-600" />;
-    }
-  };
-
-  const handlePrint = () => window.print();
-
-  const handleDownload = () => {
-    if (fees.length === 0) {
-      alert("No data to download");
-      return;
-    }
-    
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      "Month,Year,Total Amount,Paid Amount,Due Amount,Payment Date,Payment Method,Status,Receipt No,Remarks\n" +
-      fees.map(row => 
-        `${row.month},${row.year},${row.totalAmount},${row.paidAmount},${row.dueAmount},"${row.paymentDate ? new Date(row.paymentDate).toLocaleDateString() : 'N/A'}",${row.paymentMethod},${row.status},${row.receiptNo || 'N/A'},"${row.remarks || ''}"`
-      ).join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "mess_fee_report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Mess Fee Records</h1>
-        <div className="text-sm text-gray-600">View and manage mess fee payments</div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Search Student by Phone Number</h2>
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Enter student phone number"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center space-x-2"
-            >
-              {loading ? <><FaSpinner className="animate-spin" /><span>Searching...</span></> : <><FaSearch /><span>Search</span></>}
-            </button>
-          </div>
-          {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600">{error}</p></div>}
-        </form>
-      </div>
-
-      {student && (
-        <>
-          <div className="bg-white rounded-xl shadow p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-              <FaUserCircle className="text-blue-600 text-5xl" />
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold text-gray-800">{student.name}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-                  <div><p className="text-gray-600 text-sm">Phone</p><p className="font-semibold">{student.phone}</p></div>
-                  <div><p className="text-gray-600 text-sm">Room</p><p className="font-semibold">Room {student.roomNo}</p></div>
-                  <div><p className="text-gray-600 text-sm">Roll No</p><p className="font-semibold">{student.rollNo}</p></div>
-                </div>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600">Total Records</p>
-                <p className="text-2xl font-bold text-blue-600">{totalRecords}</p>
-              </div>
-            </div>
-          </div>
-
-          {fees.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl shadow p-5">
-                  <div className="flex items-center justify-between">
-                    <div><p className="text-sm text-gray-600">Total Amount</p><p className="text-2xl font-bold text-orange-600">₹{totalAmount.toLocaleString()}</p></div>
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center"><FaRupeeSign className="text-orange-600 text-xl" /></div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl shadow p-5">
-                  <div className="flex items-center justify-between">
-                    <div><p className="text-sm text-gray-600">Total Paid</p><p className="text-2xl font-bold text-green-600">₹{totalPaid.toLocaleString()}</p></div>
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center"><FaCheckCircle className="text-green-600 text-xl" /></div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl shadow p-5">
-                  <div className="flex items-center justify-between">
-                    <div><p className="text-sm text-gray-600">Total Due</p><p className="text-2xl font-bold text-red-600">₹{totalDue.toLocaleString()}</p></div>
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center"><FaExclamation className="text-red-600 text-xl" /></div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl shadow p-5">
-                  <div className="flex items-center justify-between">
-                    <div><p className="text-sm text-gray-600">Records</p><p className="text-2xl font-bold text-gray-800">{totalRecords}</p></div>
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center"><FaCalendarAlt className="text-blue-600 text-xl" /></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow overflow-hidden">
-                <div className="p-6 border-b">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-800">Monthly Mess Fee Records</h3>
-                      <p className="text-gray-600 mt-1">Payment details for {student.name}</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <button onClick={handlePrint} className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center space-x-2"><FaPrint /><span>Print</span></button>
-                      <button onClick={handleDownload} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"><FaDownload /><span>Download</span></button>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="py-3 px-4 text-left">Month/Year</th>
-                        <th className="py-3 px-4 text-left">Total</th>
-                        <th className="py-3 px-4 text-left">Paid</th>
-                        <th className="py-3 px-4 text-left">Due</th>
-                        <th className="py-3 px-4 text-left">Payment Date</th>
-                        <th className="py-3 px-4 text-left">Method</th>
-                        <th className="py-3 px-4 text-left">Status</th>
-                        <th className="py-3 px-4 text-left">Receipt</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fees.map((record) => (
-                        <tr key={record._id} className="border-t hover:bg-gray-50">
-                          <td className="py-3 px-4">{record.month} {record.year}</td>
-                          <td className="py-3 px-4 font-bold">₹{record.totalAmount?.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-green-600">₹{record.paidAmount?.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-red-600">₹{record.dueAmount?.toLocaleString()}</td>
-                          <td className="py-3 px-4">{record.paymentDate ? new Date(record.paymentDate).toLocaleDateString() : "-"}</td>
-                          <td className="py-3 px-4">{record.paymentMethod || "-"}</td>
-                          <td className="py-3 px-4"><span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(record.status)}`}>{record.status}</span></td>
-                          <td className="py-3 px-4 font-mono text-blue-600">{record.receiptNo || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="bg-white rounded-xl shadow p-8 text-center">
-              <FaUtensils className="text-4xl text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-800 mb-2">No Fee Records Found</h3>
-              <p className="text-gray-600">No mess fee records found for this student</p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ==================== CANTEEN FEE CONTENT COMPONENT ====================
-function CanteenFeeContent() {
-  const [phone, setPhone] = useState("");
-  const [fees, setFees] = useState([]);
-  const [student, setStudent] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -1195,24 +1397,37 @@ function CanteenFeeContent() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <FaSpinner className="animate-spin text-4xl text-orange-500 mx-auto mb-4" />
+        <p className="text-gray-600">Loading canteen fee data...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Canteen Fee Records</h1>
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Search Student by Phone Number</h2>
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Enter student phone number" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500" />
+      
+      {!student && (
+        <div className="bg-white rounded-xl shadow p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Search Student by Phone Number</h2>
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input type="text" placeholder="Enter student phone number" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500" />
+              </div>
+              <button type="submit" disabled={loading} className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center space-x-2">
+                {loading ? <><FaSpinner className="animate-spin" /><span>Searching...</span></> : <><FaSearch /><span>Search</span></>}
+              </button>
             </div>
-            <button type="submit" disabled={loading} className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center space-x-2">
-              {loading ? <><FaSpinner className="animate-spin" /><span>Searching...</span></> : <><FaSearch /><span>Search</span></>}
-            </button>
-          </div>
-          {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600">{error}</p></div>}
-        </form>
-      </div>
+            {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-red-600">{error}</p></div>}
+          </form>
+        </div>
+      )}
+      
       {student && (
         <>
           <div className="bg-white rounded-xl shadow p-6">
@@ -1262,11 +1477,33 @@ function CanteenFeeContent() {
   );
 }
 
-// Other content components
-function MyAccountContent() {
-  return <div className="p-6 bg-white rounded-xl shadow"><h1 className="text-2xl font-bold">My Account</h1><p className="mt-4">Account details coming soon...</p></div>;
+// Other content components (updated to accept props)
+function MyAccountContent({ studentInfo }) {
+  return (
+    <div className="p-6 bg-white rounded-xl shadow">
+      <h1 className="text-2xl font-bold">My Account</h1>
+      {studentInfo && (
+        <div className="mt-6 space-y-4">
+          <p><strong>Name:</strong> {studentInfo.name}</p>
+          <p><strong>Email:</strong> {studentInfo.email}</p>
+          <p><strong>Phone:</strong> {studentInfo.phone}</p>
+          <p><strong>Roll No:</strong> {studentInfo.rollNo}</p>
+          <p><strong>Room:</strong> {studentInfo.roomNo}</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function DefaultContent() {
-  return <div className="p-6 bg-white rounded-xl shadow"><h1 className="text-2xl font-bold">Welcome to Student Panel</h1><p className="mt-4">Select a menu option to continue</p></div>;
+function DefaultContent({ studentInfo, isLoggedIn }) {
+  return (
+    <div className="p-6 bg-white rounded-xl shadow">
+      <h1 className="text-2xl font-bold">Welcome to Student Panel</h1>
+      {isLoggedIn && studentInfo ? (
+        <p className="mt-4">Welcome back, {studentInfo.name}! Select a menu option to continue.</p>
+      ) : (
+        <p className="mt-4">Please log in to access your information.</p>
+      )}
+    </div>
+  );
 }
