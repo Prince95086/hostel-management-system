@@ -2,16 +2,19 @@ import express from "express";
 import {
   createStudentReport,
   getStudentReports,
-  getStudentReportsByStudentId,
   updateStudentReport,
   deleteStudentReport,
+  getStudentReportsByLogin,   // ✅ add this
 } from "../controllers/studentReportController.js";
 
 const router = express.Router();
 
 router.post("/", createStudentReport);
 router.get("/", getStudentReports);
-router.get("/:studentId", getStudentReportsByStudentId);
+
+// ✅ NEW LOGIN ROUTE
+router.get("/login/:identifier", getStudentReportsByLogin);
+
 router.put("/:id", updateStudentReport);
 router.delete("/:id", deleteStudentReport);
 

@@ -17,6 +17,7 @@ import {
   FaTrash,
   FaEdit,
   FaFilter,
+  FaPhone,
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
@@ -27,13 +28,14 @@ export default function ReportAdmin() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportType, setReportType] = useState("worker"); // "worker" or "student"
-  const [filterType, setFilterType] = useState("all"); // "all", "worker", "student"
-  const [reports, setReports] = useState([]); // Array to store all reports
-  const [editingIndex, setEditingIndex] = useState(null); // For editing existing reports
+  const [reportType, setReportType] = useState("worker");
+  const [filterType, setFilterType] = useState("worker");
+  const [reports, setReports] = useState([]);
+  const [editingIndex, setEditingIndex] = useState(null);
   const [reportData, setReportData] = useState({
     name: "",
     id: "",
+    phoneNo: "",
     date: new Date().toISOString().split("T")[0],
     issueType: "",
     description: "",
@@ -66,7 +68,8 @@ export default function ReportAdmin() {
           _id: r._id,
           type: "worker",
           id: r.workerId,
-          name: r.workerName
+          name: r.workerName,
+          phoneNo: r.phoneNo || r.workerPhone || r.phone || "N/A"
         }));
 
         const students = studentRes.data.map(r => ({
@@ -74,7 +77,8 @@ export default function ReportAdmin() {
           _id: r._id,
           type: "student",
           id: r.studentId,
-          name: r.studentName
+          name: r.studentName,
+          phoneNo: r.phoneNo || r.studentPhone || r.phone || "N/A"
         }));
 
         setReports([...workers, ...students]);
@@ -107,8 +111,9 @@ export default function ReportAdmin() {
 
   // Filter reports based on filterType
   const filteredReports = reports.filter(report => {
-    if (filterType === "all") return true;
-    return report.type === filterType;
+    if (filterType === "worker") return report.type === "worker";
+    if (filterType === "student") return report.type === "student";
+    return true;
   });
 
   const handleInputChange = (e) => {
@@ -128,6 +133,7 @@ export default function ReportAdmin() {
           await axios.put(`http://localhost:5000/api/worker-reports/${reports[editingIndex]._id}`, {
             workerName: reportData.name,
             workerId: reportData.id,
+            phoneNo: reportData.phoneNo,
             date: reportData.date,
             issueType: reportData.issueType,
             description: reportData.description,
@@ -138,6 +144,7 @@ export default function ReportAdmin() {
           await axios.post("http://localhost:5000/api/worker-reports", {
             workerName: reportData.name,
             workerId: reportData.id,
+            phoneNo: reportData.phoneNo,
             date: reportData.date,
             issueType: reportData.issueType,
             description: reportData.description,
@@ -150,6 +157,7 @@ export default function ReportAdmin() {
           await axios.put(`http://localhost:5000/api/student-reports/${reports[editingIndex]._id}`, {
             studentName: reportData.name,
             studentId: reportData.id,
+            phoneNo: reportData.phoneNo,
             date: reportData.date,
             issueType: reportData.issueType,
             description: reportData.description,
@@ -160,6 +168,7 @@ export default function ReportAdmin() {
           await axios.post("http://localhost:5000/api/student-reports", {
             studentName: reportData.name,
             studentId: reportData.id,
+            phoneNo: reportData.phoneNo,
             date: reportData.date,
             issueType: reportData.issueType,
             description: reportData.description,
@@ -191,7 +200,6 @@ export default function ReportAdmin() {
         await axios.delete(`http://localhost:5000/api/student-reports/${report._id}`);
       }
       
-      // Update local state instead of reloading the page
       setReports(prev => prev.filter(r => r._id !== report._id));
       alert("Report deleted successfully");
     } catch (err) {
@@ -207,6 +215,7 @@ export default function ReportAdmin() {
     setReportData({
       name: report.name,
       id: report.id,
+      phoneNo: report.phoneNo || "",
       date: report.date,
       issueType: report.issueType,
       description: report.description,
@@ -224,6 +233,7 @@ export default function ReportAdmin() {
     setReportData({
       name: "",
       id: "",
+      phoneNo: "",
       date: new Date().toISOString().split("T")[0],
       issueType: "",
       description: "",
@@ -240,6 +250,7 @@ export default function ReportAdmin() {
       `Type: ${report.type === "worker" ? "Worker" : "Student"}\n` +
       `Name: ${report.name}\n` +
       `ID: ${report.id}\n` +
+      `Phone: ${report.phoneNo || "N/A"}\n` +
       `Date: ${report.date}\n` +
       `Issue Type: ${report.issueType}\n` +
       `Severity: ${report.severity}\n` +
@@ -313,6 +324,7 @@ export default function ReportAdmin() {
                     setReportData({
                       name: "",
                       id: "",
+                      phoneNo: "",
                       date: new Date().toISOString().split("T")[0],
                       issueType: "",
                       description: "",
@@ -388,6 +400,26 @@ export default function ReportAdmin() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                   <div>
                     <label className="block text-lg font-medium text-gray-700 mb-2">
+                      Phone Number *
+                    </label>
+                    <div className="relative">
+                      <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="tel"
+                        name="phoneNo"
+                        value={reportData.phoneNo}
+                        onChange={handleInputChange}
+                        className="w-full pl-10 pr-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        placeholder="Enter 10-digit phone number"
+                        maxLength="10"
+                        pattern="[0-9]{10}"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-lg font-medium text-gray-700 mb-2">
                       Date *
                     </label>
                     <input
@@ -399,7 +431,9 @@ export default function ReportAdmin() {
                       required
                     />
                   </div>
-                  
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                   <div>
                     <label className="block text-lg font-medium text-gray-700 mb-2">
                       Issue Type *
@@ -417,31 +451,31 @@ export default function ReportAdmin() {
                       ))}
                     </select>
                   </div>
-                </div>
 
-                <div className="mb-6">
-                  <label className="block text-lg font-medium text-gray-700 mb-2">
-                    Severity Level
-                  </label>
-                  <div className="flex gap-3">
-                    {["low", "medium", "high"].map((level) => (
-                      <button
-                        key={level}
-                        type="button"
-                        onClick={() => setReportData(prev => ({ ...prev, severity: level }))}
-                        className={`flex-1 py-3 rounded-lg font-medium capitalize text-lg transition-all ${
-                          reportData.severity === level
-                            ? level === "low"
-                              ? "bg-green-500 text-white shadow-lg"
-                              : level === "medium"
-                              ? "bg-yellow-500 text-white shadow-lg"
-                              : "bg-red-500 text-white shadow-lg"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
-                      >
-                        {level.charAt(0).toUpperCase() + level.slice(1)}
-                      </button>
-                    ))}
+                  <div>
+                    <label className="block text-lg font-medium text-gray-700 mb-2">
+                      Severity
+                    </label>
+                    <div className="flex gap-3">
+                      {["low", "medium", "high"].map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => setReportData(prev => ({ ...prev, severity: level }))}
+                          className={`flex-1 py-3 rounded-lg font-medium capitalize text-lg transition-all ${
+                            reportData.severity === level
+                              ? level === "low"
+                                ? "bg-green-500 text-white shadow-lg"
+                                : level === "medium"
+                                ? "bg-yellow-500 text-white shadow-lg"
+                                : "bg-red-500 text-white shadow-lg"
+                              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                          }`}
+                        >
+                          {level}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -462,7 +496,7 @@ export default function ReportAdmin() {
 
                 <div className="mb-8">
                   <label className="block text-lg font-medium text-gray-700 mb-2">
-                    Action Taken / Recommended Action
+                    Action Taken
                   </label>
                   <textarea
                     name="actionTaken"
@@ -470,7 +504,7 @@ export default function ReportAdmin() {
                     onChange={handleInputChange}
                     rows="4"
                     className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                    placeholder="Enter the action taken or recommended action. Be specific about any disciplinary measures, warnings, fines, or other actions..."
+                    placeholder="Enter the action taken..."
                   />
                 </div>
 
@@ -483,6 +517,7 @@ export default function ReportAdmin() {
                       setReportData({
                         name: "",
                         id: "",
+                        phoneNo: "",
                         date: new Date().toISOString().split("T")[0],
                         issueType: "",
                         description: "",
@@ -498,7 +533,7 @@ export default function ReportAdmin() {
                     type="submit"
                     className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-lg"
                   >
-                    {editingIndex !== null ? "Update Report" : "Submit Report"}
+                    {editingIndex !== null ? "Update" : "Submit"}
                   </button>
                 </div>
               </form>
@@ -520,8 +555,8 @@ export default function ReportAdmin() {
 
             <img src={pulogo} alt="PU Logo" className="w-12 h-12" />
 
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">
-              Teja Singh Boys Hostel 6
+            <h1 className="text-xl lg:text-2xl font-bold text-gray-800">
+              Hostel 6
             </h1>
           </div>
 
@@ -531,9 +566,9 @@ export default function ReportAdmin() {
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-2"
             >
-              <FaUserCircle size={34} />
+              <FaUserCircle size={30} />
               <IoChevronDown
-                className={`transition-transform ${
+                className={`text-gray-600 transition-transform ${
                   dropdownOpen ? "rotate-180" : ""
                 }`}
               />
@@ -556,183 +591,177 @@ export default function ReportAdmin() {
         </header>
 
         {/* ---------- PAGE CONTENT (REPORTS TABLE) ---------- */}
-        <section className="flex-1 p-6 overflow-auto">
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                {/* Decreased width for Report Management heading */}
-                <h2 className="text-2xl font-bold text-gray-800 max-w-xs">Report Management</h2>
-                <p className="text-gray-600 text-base max-w-xs">Manage worker and student reports</p>
+        <section className="flex-1 p-4 overflow-auto">
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            {/* Header with minimized text */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <FaFileAlt className="text-xl text-blue-600" />
+                <h2 className="text-xl font-bold text-gray-800">Reports</h2>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="text-base">
-                  <span className="text-gray-500">Showing:</span>
-                  <span className="font-bold text-xl ml-2">
-                    {filterType === "all" ? "All" : filterType === "worker" ? "Worker" : "Student"} Reports
-                    <span className="text-base text-gray-500 ml-2">({filteredReports.length})</span>
+              
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="text-sm">
+                  <span className="text-gray-500">View:</span>
+                  <span className="font-semibold ml-1">
+                    {filterType === "worker" ? "Worker" : "Student"}
                   </span>
+                  <span className="text-gray-500 ml-2 text-xs">({filteredReports.length})</span>
                 </div>
                 <button
                   onClick={() => setShowReportModal(true)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 text-base"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm whitespace-nowrap"
                 >
-                  <FaFileAlt className="text-lg" />
-                  Create New Report
+                  <FaFileAlt className="text-base" />
+                  New
                 </button>
               </div>
             </div>
 
-            {/* Filter Buttons */}
-            <div className="flex gap-4 mb-8">
-              <button
-                onClick={() => setFilterType("all")}
-                className={`px-6 py-3 rounded-lg font-semibold text-base transition-colors flex items-center gap-2 ${
-                  filterType === "all"
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                <FaFilter />
-                All Reports
-                <span className="ml-2 px-2 py-1 text-sm bg-white/30 rounded">
-                  {reports.length}
-                </span>
-              </button>
+            {/* Filter Buttons - Compact */}
+            <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setFilterType("worker")}
-                className={`px-6 py-3 rounded-lg font-semibold text-base transition-colors flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
                   filterType === "worker"
-                    ? "bg-green-600 text-white shadow-lg"
+                    ? "bg-green-600 text-white shadow"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
                 <FaUsers />
-                Worker Reports
-                <span className="ml-2 px-2 py-1 text-sm bg-white/30 rounded">
+                Worker
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/30 rounded">
                   {reports.filter(r => r.type === "worker").length}
                 </span>
               </button>
               <button
                 onClick={() => setFilterType("student")}
-                className={`px-6 py-3 rounded-lg font-semibold text-base transition-colors flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
                   filterType === "student"
-                    ? "bg-purple-600 text-white shadow-lg"
+                    ? "bg-purple-600 text-white shadow"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
                 <FaUsers />
-                Student Reports
-                <span className="ml-2 px-2 py-1 text-sm bg-white/30 rounded">
+                Student
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/30 rounded">
                   {reports.filter(r => r.type === "student").length}
                 </span>
               </button>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-blue-50 p-5 rounded-xl">
+            {/* Stats Cards - Compact */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-blue-50 p-3 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm">Total Reports</p>
-                    <p className="text-2xl font-bold text-gray-800">{reports.length}</p>
+                    <p className="text-xs text-gray-600">Total</p>
+                    <p className="text-xl font-bold text-gray-800">{reports.length}</p>
                   </div>
-                  <FaFileAlt className="text-2xl text-blue-500" />
+                  <FaFileAlt className="text-lg text-blue-500" />
                 </div>
               </div>
-              <div className="bg-green-50 p-5 rounded-xl">
+              <div className="bg-green-50 p-3 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm">Worker Reports</p>
-                    <p className="text-2xl font-bold text-gray-800">
+                    <p className="text-xs text-gray-600">Worker</p>
+                    <p className="text-xl font-bold text-gray-800">
                       {reports.filter(r => r.type === "worker").length}
                     </p>
                   </div>
-                  <FaUsers className="text-2xl text-green-500" />
+                  <FaUsers className="text-lg text-green-500" />
                 </div>
               </div>
-              <div className="bg-purple-50 p-5 rounded-xl">
+              <div className="bg-purple-50 p-3 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm">Student Reports</p>
-                    <p className="text-2xl font-bold text-gray-800">
+                    <p className="text-xs text-gray-600">Student</p>
+                    <p className="text-xl font-bold text-gray-800">
                       {reports.filter(r => r.type === "student").length}
                     </p>
                   </div>
-                  <FaUsers className="text-2xl text-purple-500" />
+                  <FaUsers className="text-lg text-purple-500" />
                 </div>
               </div>
-              <div className="bg-red-50 p-5 rounded-xl">
+              <div className="bg-red-50 p-3 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm">High Severity</p>
-                    <p className="text-2xl font-bold text-gray-800">
+                    <p className="text-xs text-gray-600">High</p>
+                    <p className="text-xl font-bold text-gray-800">
                       {reports.filter(r => r.severity === "high").length}
                     </p>
                   </div>
-                  <FaExclamationTriangle className="text-2xl text-red-500" />
+                  <FaExclamationTriangle className="text-lg text-red-500" />
                 </div>
               </div>
             </div>
 
             {filteredReports.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border">
-                <table className="w-full">
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-100 border-b">
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">S.No</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Type</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Name</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">ID</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Date</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Issue Type</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Severity</th>
-                      <th className="py-4 px-6 text-left font-semibold text-gray-700 text-base">Actions</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">#</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">Type</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">Name</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">ID</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">Phone</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">Date</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">Issue</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">Severity</th>
+                      <th className="py-2 px-3 text-left font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredReports.map((report, index) => (
                       <tr key={report._id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="py-4 px-6 text-base">{index + 1}</td>
-                        <td className="py-4 px-6">
-                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                        <td className="py-2 px-3 text-sm">{index + 1}</td>
+                        <td className="py-2 px-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             report.type === "worker" 
                               ? "bg-green-100 text-green-800" 
                               : "bg-purple-100 text-purple-800"
                           }`}>
-                            {report.type === "worker" ? "Worker" : "Student"}
+                            {report.type === "worker" ? "W" : "S"}
                           </span>
                         </td>
-                        <td className="py-4 px-6 font-medium text-base">{report.name}</td>
-                        <td className="py-4 px-6 text-base">{report.id}</td>
-                        <td className="py-4 px-6 text-base">{report.date}</td>
-                        <td className="py-4 px-6 text-base">{report.issueType}</td>
-                        <td className="py-4 px-6">
-                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${getSeverityColor(report.severity)}`}>
-                            {report.severity.charAt(0).toUpperCase() + report.severity.slice(1)}
+                        <td className="py-2 px-3 font-medium text-sm">{report.name}</td>
+                        <td className="py-2 px-3 text-sm">{report.id}</td>
+                        <td className="py-2 px-3 text-sm">
+                          <div className="flex items-center gap-1">
+                            <FaPhone className="text-blue-500 text-xs" />
+                            {report.phoneNo}
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 text-sm">{report.date}</td>
+                        <td className="py-2 px-3 text-sm">{report.issueType}</td>
+                        <td className="py-2 px-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(report.severity)}`}>
+                            {report.severity.charAt(0)}
                           </span>
                         </td>
-                        <td className="py-4 px-6">
-                          <div className="flex gap-3">
+                        <td className="py-2 px-3">
+                          <div className="flex gap-1">
                             <button
                               onClick={() => handleViewReport(index)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="View Details"
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="View"
                             >
-                              <FaEye className="text-lg" />
+                              <FaEye className="text-sm" />
                             </button>
                             <button
                               onClick={() => handleEditReport(index)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                              title="Edit Report"
+                              className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                              title="Edit"
                             >
-                              <FaEdit className="text-lg" />
+                              <FaEdit className="text-sm" />
                             </button>
                             <button
                               onClick={() => handleDeleteReport(index)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete Report"
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Delete"
                             >
-                              <FaTrash className="text-lg" />
+                              <FaTrash className="text-sm" />
                             </button>
                           </div>
                         </td>
@@ -742,44 +771,46 @@ export default function ReportAdmin() {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-16">
-                {filterType === "all" ? (
+              <div className="text-center py-8">
+                {filterType === "worker" ? (
                   <>
-                    <FaFileAlt className="text-6xl text-gray-300 mx-auto mb-6" />
-                    <h3 className="text-xl font-semibold text-gray-600 mb-3">No Reports Yet</h3>
-                    <p className="text-gray-500 text-base mb-8">Create your first report by clicking the button below.</p>
-                    <button
-                      onClick={() => setShowReportModal(true)}
-                      className="px-8 py-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 mx-auto text-base"
-                    >
-                      <FaFileAlt className="text-lg" />
-                      Create First Report
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <FaFilter className="text-6xl text-gray-300 mx-auto mb-6" />
-                    <h3 className="text-xl font-semibold text-gray-600 mb-3">
-                      No {filterType === "worker" ? "Worker" : "Student"} Reports Found
-                    </h3>
-                    <p className="text-gray-500 text-base mb-8">
-                      {filterType === "worker" 
-                        ? "No worker reports have been created yet." 
-                        : "No student reports have been created yet."}
-                    </p>
-                    <div className="flex gap-4 justify-center">
+                    <FaUsers className="text-4xl text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No Worker Reports</h3>
+                    <p className="text-sm text-gray-500 mb-4">Create your first worker report</p>
+                    <div className="flex gap-3 justify-center">
                       <button
-                        onClick={() => setFilterType("all")}
-                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center gap-2 text-base"
+                        onClick={() => setFilterType("student")}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
                       >
-                        View All Reports
+                        View Student
                       </button>
                       <button
                         onClick={() => setShowReportModal(true)}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-3 text-base"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
                       >
-                        <FaFileAlt className="text-lg" />
-                        Create {filterType === "worker" ? "Worker" : "Student"} Report
+                        <FaFileAlt />
+                        New
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <FaUsers className="text-4xl text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No Student Reports</h3>
+                    <p className="text-sm text-gray-500 mb-4">Create your first student report</p>
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        onClick={() => setFilterType("worker")}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+                      >
+                        View Worker
+                      </button>
+                      <button
+                        onClick={() => setShowReportModal(true)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
+                      >
+                        <FaFileAlt />
+                        New
                       </button>
                     </div>
                   </>
