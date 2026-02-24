@@ -17,6 +17,9 @@ import {
   FaMapMarkerAlt,
   FaPhone,
   FaCheckCircle,
+  FaSignOutAlt,
+  FaIdCard,
+  FaEnvelope
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
@@ -26,14 +29,42 @@ export default function StudentPanelWithFunctions() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeMenu, setActiveMenu] = useState("Function"); // Changed default to "Function"
+  const [activeMenu, setActiveMenu] = useState("Function");
   const [functions, setFunctions] = useState([]);
   const [loadingFunctions, setLoadingFunctions] = useState(true);
   const [showFunctions, setShowFunctions] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Student info states
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [studentInfo, setStudentInfo] = useState(null);
+  const [studentId, setStudentId] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  /* ---------- CHECK IF ALREADY LOGGED IN ---------- */
+  useEffect(() => {
+    const savedStudent = localStorage.getItem("studentInfo") || sessionStorage.getItem("studentInfo");
+    const savedId = localStorage.getItem("studentId") || sessionStorage.getItem("studentId");
+    const savedRollNo = localStorage.getItem("studentRollNo") || sessionStorage.getItem("studentRollNo");
+    
+    console.log("Checking login status:", { savedStudent, savedId, savedRollNo });
+    
+    if (savedStudent) {
+      try {
+        const studentData = JSON.parse(savedStudent);
+        setStudentInfo(studentData);
+        
+        // Get student ID from various sources (roll number is the ID)
+        const id = savedId || savedRollNo || studentData.rollNo || studentData.rollNumber || studentData._id;
+        setStudentId(id);
+        setIsLoggedIn(true);
+      } catch (e) {
+        console.error("Error parsing student info:", e);
+      }
+    }
+  }, []);
 
   /* ---------- LOAD FUNCTIONS FROM ADMIN ---------- */
   const fetchFunctions = async () => {
@@ -88,7 +119,7 @@ export default function StudentPanelWithFunctions() {
   }, []);
 
   /* ---------- SIDEBAR MENU ---------- */
-  const menuItems = [
+ const menuItems = [
       { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
       { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
       { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
@@ -102,17 +133,35 @@ export default function StudentPanelWithFunctions() {
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);
     
-    // If clicking on "Function", don't navigate, just set it as active
-    if (label === "Function") {
-      if (isMobile) setSidebarOpen(false);
-      return; // Don't navigate, stay on current page
-    }
-    
-    // For other menu items, navigate normally
+    // Navigate to the path for all menu items
     if (path && path !== "#") {
       navigate(path);
       if (isMobile) setSidebarOpen(false);
     }
+  };
+
+  /* ---------- LOGOUT FUNCTION ---------- */
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setStudentInfo(null);
+    setStudentId("");
+    
+    // Clear all storage
+    localStorage.removeItem("studentInfo");
+    localStorage.removeItem("studentId");
+    localStorage.removeItem("token");
+    localStorage.removeItem("studentPhone");
+    localStorage.removeItem("studentRollNo");
+    localStorage.removeItem("student");
+    
+    sessionStorage.removeItem("studentInfo");
+    sessionStorage.removeItem("studentId");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("studentPhone");
+    sessionStorage.removeItem("studentRollNo");
+    
+    setDropdownOpen(false);
+    navigate("/");
   };
 
   // Auto-close sidebar when clicking outside on mobile
@@ -139,26 +188,19 @@ export default function StudentPanelWithFunctions() {
     fetchFunctions();
   };
 
-  // Set active menu based on current path OR if we're showing functions
+  // Set active menu based on current path
   useEffect(() => {
     const currentPath = location.pathname;
-    
-    // If we're on any page showing functions (always shown), highlight "Function" menu
-    if (showFunctions) {
-      setActiveMenu("Function");
-    } else {
-      // Otherwise, highlight based on current path
-      const currentMenuItem = menuItems.find(item => item.path === currentPath);
-      if (currentMenuItem) {
-        setActiveMenu(currentMenuItem.label);
-      }
+    const currentMenuItem = menuItems.find(item => item.path === currentPath);
+    if (currentMenuItem) {
+      setActiveMenu(currentMenuItem.label);
     }
-  }, [location.pathname, showFunctions]);
+  }, [location.pathname]);
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* ================= SIDEBAR ================= */}
-       <aside
+      <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-30
           w-64 bg-orange-400 text-white flex flex-col justify-between
@@ -189,6 +231,23 @@ export default function StudentPanelWithFunctions() {
             </ul>
           </nav>
         </div>
+
+        {/* Student Info in Sidebar if logged in - EXACTLY AS SHOWN IN IMAGE */}
+        {isLoggedIn && studentInfo && (
+          <div className="p-4 border-t border-orange-500">
+            <div className="flex items-center space-x-3">
+              <FaUserCircle className="text-2xl flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold truncate text-white">
+                  {studentInfo.name || "Student"}
+                </p>
+                <p className="text-sm opacity-90 truncate">
+                  ID: {studentId}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* ================= MAIN ================= */}
@@ -228,39 +287,56 @@ export default function StudentPanelWithFunctions() {
               </div>
 
               {dropdownOpen && (
-               <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-48 py-2 z-50">
+                <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-56 py-2 z-50">
+                  {/* Student Info in Dropdown - EXACTLY AS SHOWN IN IMAGE */}
+                  {isLoggedIn && studentInfo && (
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="font-semibold text-gray-800 truncate">
+                        {studentInfo.name || "Student"}
+                      </p>
+                      <p className="text-sm text-gray-500 truncate">
+                        ID: {studentId}
+                      </p>
+                    </div>
+                  )}
+                  
                   <button
                     type="button"
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors border-b border-gray-100"
                     onClick={() => {
                       setDropdownOpen(false);
                       navigate("/my-account");
                     }}
                   >
-                    Profile
+                    <span className="flex items-center space-x-2">
+                      <FaUserCircle />
+                      <span>Profile</span>
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors border-b border-gray-100"
                     onClick={() => {
                       setDropdownOpen(false);
-                      navigate("/student-setting"); // Fixed path
+                      navigate("/student-setting");
                     }}
                   >
-                    Settings
+                    <span className="flex items-center space-x-2">
+                      <FaCog />
+                      <span>Settings</span>
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors"
-                    onClick={() => {
-                      localStorage.removeItem("studentToken"); // Changed to studentToken
-                      setDropdownOpen(false);
-                      navigate("/");
-                    }}
+                    className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors mt-2 border-t border-gray-100"
+                    onClick={handleLogout}
                   >
-                    Logout
+                    <span className="flex items-center space-x-2">
+                      <FaSignOutAlt />
+                      <span>Logout</span>
+                    </span>
                   </button>
                 </div>
               )}
@@ -289,13 +365,7 @@ export default function StudentPanelWithFunctions() {
                   {loadingFunctions ? "Refreshing..." : "Refresh"}
                 </button>
                 <button
-                  onClick={() => {
-                    setShowFunctions(!showFunctions);
-                    // When showing/hiding functions, update active menu
-                    if (showFunctions) {
-                      setActiveMenu("Function");
-                    }
-                  }}
+                  onClick={() => setShowFunctions(!showFunctions)}
                   className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors flex items-center gap-2"
                 >
                   {showFunctions ? "Hide" : "Show"} Functions
@@ -351,7 +421,7 @@ export default function StudentPanelWithFunctions() {
                           <div>
                             <p className="text-sm text-gray-600">Total Guests</p>
                             <p className="text-2xl font-bold text-gray-800">
-                              {functions.reduce((sum, f) => sum + parseInt(f.expectedGuests || 0), 0)}
+                              {functions.reduce((sum, f) => sum + (parseInt(f.expectedGuests) || 0), 0)}
                             </p>
                           </div>
                           <FaUsers className="text-2xl text-blue-500" />

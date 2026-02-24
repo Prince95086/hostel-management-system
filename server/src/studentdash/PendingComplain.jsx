@@ -25,18 +25,18 @@ import {
   FaHashtag,
   FaBuilding,
   FaClock,
-  FaList
+  FaList,
+  FaCheckDouble,
+  FaHistory
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
 import axios from "axios";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-// ==================== PENDING COMPLAIN COMPONENT ====================
-function PendingComplain() {
+// ==================== COMPLAINTS COMPONENT (Base) ====================
+function ComplaintsBase({ statusFilter, title, icon: Icon, colorScheme }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,33 @@ function PendingComplain() {
     completed: 0,
     inProgress: 0
   });
+
+  const colors = {
+    pending: {
+      bg: "bg-yellow-50",
+      text: "text-yellow-800",
+      border: "border-yellow-200",
+      button: "bg-yellow-500",
+      buttonHover: "hover:bg-yellow-600",
+      ring: "focus:ring-yellow-500",
+      icon: "text-yellow-500",
+      lightBg: "bg-yellow-100",
+      lightText: "text-yellow-600"
+    },
+    completed: {
+      bg: "bg-green-50",
+      text: "text-green-800",
+      border: "border-green-200",
+      button: "bg-green-500",
+      buttonHover: "hover:bg-green-600",
+      ring: "focus:ring-green-500",
+      icon: "text-green-500",
+      lightBg: "bg-green-100",
+      lightText: "text-green-600"
+    }
+  };
+
+  const theme = colors[colorScheme] || colors.pending;
 
   // Check if already logged in from sign-in page
   useEffect(() => {
@@ -87,14 +114,11 @@ function PendingComplain() {
     setSearchPerformed(true);
     
     try {
-      // Direct fetch complaints by phone number
       const response = await axios.get(
         `${API_BASE_URL}/studentcomplaints/phone/${phone}`
       );
       
-      // Check if response has data
       if (response.data) {
-        // Handle different response structures
         let complaintsData = [];
         
         if (response.data.success && response.data.data) {
@@ -121,11 +145,9 @@ function PendingComplain() {
           inProgress
         });
         
-        // Also try to get student info from the response
         if (response.data.student) {
           setStudentInfo(response.data.student);
         } else if (complaintsData.length > 0) {
-          // Extract student info from first complaint
           const firstComplaint = complaintsData[0];
           setStudentInfo({
             name: firstComplaint.name || firstComplaint.studentName,
@@ -135,31 +157,14 @@ function PendingComplain() {
             block: firstComplaint.block
           });
         }
-        
-        if (complaintsData.length > 0) {
-          toast.success(`Found ${complaintsData.length} complaints`);
-        } else {
-          toast.info("No complaints found for this phone number");
-        }
-      } else {
-        setComplaints([]);
-        setStats({ total: 0, pending: 0, completed: 0, inProgress: 0 });
-        toast.info("No complaints found for this phone number");
       }
     } catch (err) {
-      console.error("Error fetching complaints by phone:", err);
-      
-      // More specific error message based on response
+      console.error("Error fetching complaints:", err);
       if (err.response?.status === 404) {
-        setError("No complaints found for this phone number");
-      } else if (err.response?.status === 500) {
-        setError("Server error. Please try again later.");
+        setError("No complaints found");
       } else {
         setError(err.response?.data?.message || "Failed to fetch complaints");
       }
-      
-      setComplaints([]);
-      setStats({ total: 0, pending: 0, completed: 0, inProgress: 0 });
     } finally {
       setLoading(false);
     }
@@ -172,7 +177,6 @@ function PendingComplain() {
     setSearchPerformed(true);
     
     try {
-      // Fetch complaints by roll number
       const response = await axios.get(
         `${API_BASE_URL}/studentcomplaints/rollno/${rollNo}`
       );
@@ -192,7 +196,6 @@ function PendingComplain() {
         
         setComplaints(complaintsData);
         
-        // Calculate statistics
         const pending = complaintsData.filter(c => c.status?.toLowerCase() === 'pending').length;
         const completed = complaintsData.filter(c => c.status?.toLowerCase() === 'completed' || c.status?.toLowerCase() === 'resolved').length;
         const inProgress = complaintsData.filter(c => c.status?.toLowerCase() === 'in progress' || c.status?.toLowerCase() === 'in-progress').length;
@@ -204,7 +207,6 @@ function PendingComplain() {
           inProgress
         });
         
-        // Extract student info
         if (response.data.student) {
           setStudentInfo(response.data.student);
         } else if (complaintsData.length > 0) {
@@ -217,18 +219,10 @@ function PendingComplain() {
             block: firstComplaint.block
           });
         }
-        
-        if (complaintsData.length > 0) {
-          toast.success(`Found ${complaintsData.length} complaints`);
-        } else {
-          toast.info("No complaints found for this roll number");
-        }
       }
     } catch (err) {
-      console.error("Error fetching complaints by roll no:", err);
+      console.error("Error fetching complaints:", err);
       setError(err.response?.data?.message || "Failed to fetch complaints");
-      setComplaints([]);
-      setStats({ total: 0, pending: 0, completed: 0, inProgress: 0 });
     } finally {
       setLoading(false);
     }
@@ -237,17 +231,17 @@ function PendingComplain() {
   const handlePhoneSearch = (e) => {
     e.preventDefault();
     if (!phoneNumber.trim()) {
-      toast.error("Please enter a phone number");
+      setError("Please enter a phone number");
       return;
     }
     
-    // Validate phone number
     const cleanedPhone = phoneNumber.replace(/\s/g, '');
     if (cleanedPhone.length < 10) {
-      toast.error("Please enter a valid 10-digit phone number");
+      setError("Please enter a valid 10-digit phone number");
       return;
     }
     
+    setError(null);
     fetchComplaintsByPhone(cleanedPhone);
   };
 
@@ -361,22 +355,26 @@ function PendingComplain() {
     }
   };
 
-  // Filter only pending complaints
-  const pendingComplaints = complaints.filter(c => c.status?.toLowerCase() === 'pending');
+  // Filter complaints based on status
+  const filteredComplaints = complaints.filter(c => {
+    if (statusFilter === 'pending') return c.status?.toLowerCase() === 'pending';
+    if (statusFilter === 'completed') return c.status?.toLowerCase() === 'completed' || c.status?.toLowerCase() === 'resolved';
+    return true;
+  });
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">Pending Complaints</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-800">{title}</h1>
           <p className="text-sm text-gray-600 mt-1">
-            {studentInfo ? `Welcome, ${studentInfo.name}` : "View all pending complaints by phone number"}
+            {studentInfo ? `Welcome, ${studentInfo.name}` : `View all ${title.toLowerCase()}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full">
-          <FaClock />
-          <span className="font-semibold">{stats.pending} Pending</span>
+        <div className={`flex items-center gap-2 ${theme.bg} ${theme.text} px-4 py-2 rounded-full`}>
+          <Icon className={theme.icon} />
+          <span className="font-semibold">{filteredComplaints.length} {statusFilter === 'pending' ? 'Pending' : 'Completed'}</span>
         </div>
       </div>
 
@@ -412,27 +410,32 @@ function PendingComplain() {
               )}
             </button>
           </form>
+          {error && (
+            <div className="mt-3 text-sm text-red-600 bg-red-50 p-2 rounded-lg">
+              {error}
+            </div>
+          )}
         </div>
       )}
       
       {/* Student Info Display - Show when logged in */}
       {studentInfo && (
-        <div className="bg-yellow-50 rounded-xl shadow-lg p-6 border border-yellow-200">
+        <div className={`${theme.bg} rounded-xl shadow-lg p-6 border ${theme.border}`}>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
-                <FaUserCircle className="text-yellow-600 text-3xl" />
+              <div className={`w-16 h-16 ${theme.lightBg} rounded-full flex items-center justify-center`}>
+                <FaUserCircle className={`${theme.lightText} text-3xl`} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-yellow-800">{studentInfo.name}</h2>
-                <p className="text-yellow-600">Roll No: {studentInfo.rollNo || studentInfo.rollNumber} • Room: {studentInfo.roomNo}</p>
+                <h2 className={`text-2xl font-bold ${theme.text}`}>{studentInfo.name}</h2>
+                <p className={theme.lightText}>Roll No: {studentInfo.rollNo || studentInfo.rollNumber} • Room: {studentInfo.roomNo}</p>
               </div>
             </div>
             <div className="flex gap-3">
-              <span className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full">
+              <span className={`${theme.lightBg} ${theme.text} px-4 py-2 rounded-full`}>
                 Block: {studentInfo.block}
               </span>
-              <span className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full">
+              <span className={`${theme.lightBg} ${theme.text} px-4 py-2 rounded-full`}>
                 {studentInfo.hostel}
               </span>
             </div>
@@ -499,7 +502,7 @@ function PendingComplain() {
           {/* Loading State */}
           {loading && (
             <div className="text-center py-12">
-              <FaSpinner className="animate-spin text-4xl text-yellow-500 mx-auto mb-4" />
+              <FaSpinner className={`animate-spin text-4xl ${theme.icon} mx-auto mb-4`} />
               <p className="text-gray-600">Loading complaints...</p>
             </div>
           )}
@@ -518,33 +521,33 @@ function PendingComplain() {
             <div className="bg-white rounded-xl shadow-lg p-12 text-center">
               <FaCheckCircle className="text-5xl text-green-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-800 mb-2">No Complaints Found</h3>
-              <p className="text-gray-600">This student hasn't submitted any complaints yet.</p>
+              <p className="text-gray-600">You haven't submitted any complaints yet.</p>
             </div>
           )}
 
-          {/* Pending Complaints List */}
-          {!loading && !error && pendingComplaints.length > 0 && (
+          {/* Filtered Complaints List */}
+          {!loading && !error && filteredComplaints.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <FaClock className="text-yellow-500" />
-                Pending Complaints ({pendingComplaints.length})
+                <Icon className={theme.icon} />
+                {title} ({filteredComplaints.length})
               </h2>
-              {pendingComplaints.map((complaint) => (
+              {filteredComplaints.map((complaint) => (
                 <div
                   key={complaint._id}
-                  className="bg-white rounded-xl shadow-sm border border-yellow-200 p-6 hover:shadow-md transition-shadow border-l-4 border-l-yellow-500"
+                  className={`bg-white rounded-xl shadow-sm border ${theme.border} p-6 hover:shadow-md transition-shadow border-l-4 border-l-${colorScheme === 'pending' ? 'yellow' : 'green'}-500`}
                 >
                   {/* Header */}
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-start space-x-3">
-                      <FaClock className="text-yellow-500 text-xl mt-1" />
+                      {getStatusIcon(complaint.status)}
                       <div>
                         <h3 className="text-lg font-semibold text-gray-800">
                           {complaint.title || `Complaint #${complaint._id?.slice(-6)}`}
                         </h3>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium border bg-yellow-100 text-yellow-800 border-yellow-200">
-                            PENDING
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(complaint.status)}`}>
+                            {getStatusText(complaint.status)}
                           </span>
                           <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs flex items-center gap-1">
                             <span>{getCategoryIcon(complaint.category)}</span>
@@ -555,7 +558,7 @@ function PendingComplain() {
                     </div>
                     <button
                       onClick={() => toggleComplaintExpand(complaint._id)}
-                      className="text-yellow-600 hover:text-yellow-800 text-sm flex items-center gap-1"
+                      className={`${theme.text} hover:${theme.text} text-sm flex items-center gap-1`}
                     >
                       {expandedComplaints[complaint._id] ? 'Show Less' : 'View Details'}
                     </button>
@@ -571,7 +574,7 @@ function PendingComplain() {
                   {/* Student Details - Always visible */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <div className="flex items-center space-x-2 text-sm">
-                      <FaUserCircle className="text-yellow-500" />
+                      <FaUserCircle className={theme.icon} />
                       <span className="text-gray-600">{getStudentName(complaint)}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm">
@@ -636,20 +639,26 @@ function PendingComplain() {
             </div>
           )}
 
-          {/* No Pending Complaints State */}
-          {!loading && !error && complaints.length > 0 && pendingComplaints.length === 0 && (
-            <div className="bg-green-50 rounded-xl shadow-lg p-12 text-center border border-green-200">
-              <FaCheckCircle className="text-5xl text-green-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-green-700 mb-2">No Pending Complaints!</h3>
-              <p className="text-gray-600 mb-4">All your complaints have been resolved or are in progress.</p>
-              <div className="flex justify-center gap-4">
-                <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm">
-                  Completed: {stats.completed}
-                </span>
-                <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm">
-                  In Progress: {stats.inProgress}
-                </span>
-              </div>
+          {/* No Filtered Complaints State */}
+          {!loading && !error && complaints.length > 0 && filteredComplaints.length === 0 && (
+            <div className={`${theme.bg} rounded-xl shadow-lg p-12 text-center border ${theme.border}`}>
+              <Icon className={`text-5xl ${theme.icon} mx-auto mb-4`} />
+              <h3 className={`text-xl font-semibold ${theme.text} mb-2`}>No {statusFilter === 'pending' ? 'Pending' : 'Completed'} Complaints!</h3>
+              <p className="text-gray-600 mb-4">
+                {statusFilter === 'pending' 
+                  ? 'All your complaints have been resolved or are in progress.' 
+                  : 'You have not completed any complaints yet.'}
+              </p>
+              {statusFilter === 'pending' && (
+                <div className="flex justify-center gap-4">
+                  <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm">
+                    Completed: {stats.completed}
+                  </span>
+                  <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm">
+                    In Progress: {stats.inProgress}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -658,15 +667,52 @@ function PendingComplain() {
   );
 }
 
+// ==================== PENDING COMPLAIN COMPONENT ====================
+function PendingComplain() {
+  return (
+    <ComplaintsBase 
+      statusFilter="pending"
+      title="Pending Complaints"
+      icon={FaClock}
+      colorScheme="pending"
+    />
+  );
+}
+
+// ==================== COMPLETED COMPLAIN COMPONENT ====================
+function CompletedComplain() {
+  return (
+    <ComplaintsBase 
+      statusFilter="completed"
+      title="Completed Complaints"
+      icon={FaCheckCircle}
+      colorScheme="completed"
+    />
+  );
+}
+
 // ==================== MAIN LAYOUT COMPONENT ====================
 export default function StudentLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeMenu, setActiveMenu] = useState("My Account");
+  const [activeMenu, setActiveMenu] = useState(() => {
+    // Initialize active menu based on current path
+    const path = window.location.pathname;
+    if (path === "/admin/pending-complaint") return "Pending Complain";
+    if (path === "/my-account") return "My Account";
+    if (path === "/pay-fee") return "Pay Fee";
+    if (path === "/mess-fee") return "Mess Fee";
+    if (path === "/canteen-fee") return "Canteen Fee";
+    if (path === "/admin/reports") return "Reports";
+    if (path === "/admin/total-complaint") return "Function";
+    if (path === "/student-setting") return "Setting";
+    return "My Account";
+  });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [studentInfo, setStudentInfo] = useState(null);
   const [studentId, setStudentId] = useState("");
+  const [activeTab, setActiveTab] = useState("pending");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -686,11 +732,14 @@ export default function StudentLayout() {
   useEffect(() => {
     const savedStudent = localStorage.getItem("studentInfo") || sessionStorage.getItem("studentInfo");
     const savedId = localStorage.getItem("studentId") || sessionStorage.getItem("studentId");
+    const savedRollNo = localStorage.getItem("studentRollNo") || sessionStorage.getItem("studentRollNo");
     
-    if (savedStudent && savedId) {
+    if (savedStudent) {
       try {
-        setStudentInfo(JSON.parse(savedStudent));
-        setStudentId(savedId);
+        const studentData = JSON.parse(savedStudent);
+        setStudentInfo(studentData);
+        const id = savedId || savedRollNo || studentData.rollNo || studentData.rollNumber || studentData._id;
+        setStudentId(id);
         setIsLoggedIn(true);
       } catch (e) {
         console.log("Error parsing student info:", e);
@@ -698,7 +747,7 @@ export default function StudentLayout() {
     }
   }, []);
 
-  /* ---------- SIDEBAR MENU ---------- */
+  /* ---------- SIDEBAR MENU (EXACTLY AS IN YOUR ORIGINAL CODE) ---------- */
   const menuItems = [
     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
     { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
@@ -765,22 +814,51 @@ export default function StudentLayout() {
     }
   }, [location.pathname]);
 
+  // Render content based on path
+  const renderContent = () => {
+    // If we're on the pending complaint page
+    if (location.pathname === "/admin/pending-complaint") {
+      return (
+        <div className="space-y-6">
+          {/* Two buttons for switching between Pending and Completed */}
+          <div className="flex gap-4 mb-6">
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                activeTab === "pending"
+                  ? "bg-yellow-500 text-white shadow-lg scale-105"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              <FaClock />
+              Pending Complaints
+            </button>
+            <button
+              onClick={() => setActiveTab("completed")}
+              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                activeTab === "completed"
+                  ? "bg-green-500 text-white shadow-lg scale-105"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              <FaCheckCircle />
+              Completed Complaints
+            </button>
+          </div>
+
+          {/* Render based on active tab */}
+          {activeTab === "pending" ? <PendingComplain /> : <CompletedComplain />}
+        </div>
+      );
+    }
+    
+    // For all other paths, render the outlet
+    return <Outlet />;
+  };
+
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
-
-      {/* ================= SIDEBAR ================= */}
+      {/* ================= SIDEBAR (EXACTLY AS IN YOUR ORIGINAL CODE) ================= */}
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-30
@@ -864,7 +942,7 @@ export default function StudentLayout() {
               </div>
 
               {dropdownOpen && (
-                <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-48 py-2 z-50">
+                <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-56 py-2 z-50">
                   {isLoggedIn && studentInfo && (
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="font-semibold text-gray-800 truncate">{studentInfo.name || "Student"}</p>
@@ -873,7 +951,7 @@ export default function StudentLayout() {
                   )}
                   <button
                     type="button"
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors border-b border-gray-100"
                     onClick={() => {
                       setDropdownOpen(false);
                       navigate("/my-account");
@@ -887,7 +965,7 @@ export default function StudentLayout() {
 
                   <button
                     type="button"
-                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-green-50 transition-colors border-b border-gray-100"
+                    className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors border-b border-gray-100"
                     onClick={() => {
                       setDropdownOpen(false);
                       navigate("/student-setting");
@@ -917,12 +995,7 @@ export default function StudentLayout() {
 
         {/* ---------- PAGE CONTENT ---------- */}
         <section className="flex-1 p-4 lg:p-6 bg-gray-50 overflow-auto">
-          {/* Render PendingComplain when path is /admin/pending-complaint, otherwise render Outlet */}
-          {location.pathname === "/admin/pending-complaint" ? (
-            <PendingComplain />
-          ) : (
-            <Outlet />
-          )}
+          {renderContent()}
         </section>
       </main>
 

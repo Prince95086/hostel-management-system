@@ -17,6 +17,7 @@ import {
   FaSave,
   FaUndo,
   FaKey,
+  FaIdCard
 } from "react-icons/fa";
 import { IoChevronDown } from "react-icons/io5";
 import pulogo from "../assets/puimages/pulogo.jpeg";
@@ -29,6 +30,11 @@ export default function Setting() {
   const [isMobile, setIsMobile] = useState(false);
   const [activeMenu, setActiveMenu] = useState("Setting");
   const [loading, setLoading] = useState(false);
+  
+  // Student info states
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [studentInfo, setStudentInfo] = useState(null);
+  const [studentId, setStudentId] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,6 +50,27 @@ export default function Setting() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  /* ---------- CHECK IF ALREADY LOGGED IN ---------- */
+  useEffect(() => {
+    const savedStudent = localStorage.getItem("studentInfo") || sessionStorage.getItem("studentInfo");
+    const savedId = localStorage.getItem("studentId") || sessionStorage.getItem("studentId");
+    const savedRollNo = localStorage.getItem("studentRollNo") || sessionStorage.getItem("studentRollNo");
+    
+    if (savedStudent) {
+      try {
+        const studentData = JSON.parse(savedStudent);
+        setStudentInfo(studentData);
+        
+        // Get student ID from various sources
+        const id = savedId || savedRollNo || studentData.rollNo || studentData.rollNumber || studentData._id;
+        setStudentId(id);
+        setIsLoggedIn(true);
+      } catch (e) {
+        console.error("Error parsing student info:", e);
+      }
+    }
+  }, []);
+
   /* ---------- SIDEBAR MENU ---------- */
   const menuItems = [
     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
@@ -52,7 +79,7 @@ export default function Setting() {
     { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
     { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
     { label: "Function", icon: <FaClipboardList />, path: "/functions" },
-    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/pending-complaint" },
+    { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
     { label: "Setting", icon: <FaCog />, path: "/student-setting" },
   ];
 
@@ -335,6 +362,23 @@ export default function Setting() {
             </ul>
           </nav>
         </div>
+
+        {/* Student Info in Sidebar if logged in - EXACTLY AS SHOWN IN IMAGE */}
+        {isLoggedIn && studentInfo && (
+          <div className="p-4 border-t border-orange-500">
+            <div className="flex items-center space-x-3">
+              <FaUserCircle className="text-2xl flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold truncate text-white">
+                  {studentInfo.name || "Student"}
+                </p>
+                <p className="text-sm opacity-90 truncate">
+                  ID: {studentId}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* ================= MAIN ================= */}
@@ -374,7 +418,20 @@ export default function Setting() {
               </div>
 
               {dropdownOpen && (
-                <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-48 py-2 z-50">
+                <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg border border-gray-200 w-56 py-2 z-50">
+                  {/* Student Info in Dropdown - EXACTLY AS SHOWN IN IMAGE */}
+                  {isLoggedIn && studentInfo && (
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="font-semibold text-gray-800 truncate">
+                        {studentInfo.name || "Student"}
+                      </p>
+                      <p className="text-sm text-gray-500 truncate flex items-center">
+                        <FaIdCard className="mr-1 text-xs" />
+                        ID: {studentId}
+                      </p>
+                    </div>
+                  )}
+                  
                   <button
                     type="button"
                     className="block w-full text-left px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors border-b border-gray-100"
@@ -383,8 +440,10 @@ export default function Setting() {
                       navigate("/my-account");
                     }}
                   >
-                    <FaUserCircle className="inline mr-2" />
-                    Profile
+                    <span className="flex items-center space-x-2">
+                      <FaUserCircle />
+                      <span>Profile</span>
+                    </span>
                   </button>
 
                   <button
@@ -395,8 +454,10 @@ export default function Setting() {
                       navigate("/student-setting");
                     }}
                   >
-                    <FaCog className="inline mr-2" />
-                    Settings
+                    <span className="flex items-center space-x-2">
+                      <FaCog />
+                      <span>Settings</span>
+                    </span>
                   </button>
 
                   <button
@@ -404,8 +465,10 @@ export default function Setting() {
                     className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors mt-2 border-t border-gray-100"
                     onClick={handleLogout}
                   >
-                    <FaSignOutAlt className="inline mr-2" />
-                    Logout
+                    <span className="flex items-center space-x-2">
+                      <FaSignOutAlt />
+                      <span>Logout</span>
+                    </span>
                   </button>
                 </div>
               )}

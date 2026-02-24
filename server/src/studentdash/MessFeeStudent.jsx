@@ -88,16 +88,16 @@ export default function MessFeeStudent() {
   }, []);
 
   /* ---------- SIDEBAR MENU ---------- */
-   const menuItems = [
-      { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
-      { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
-      { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
-      { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
-      { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
-      { label: "Function", icon: <FaClipboardList />, path: "/admin/total-complaint" },
-      { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
-      { label: "Setting", icon: <FaCog />, path: "/student-setting" },
-    ];
+    const menuItems = [
+     { label: "My Account", icon: <FaUserCircle />, path: "/my-account" },
+     { label: "Pay Fee", icon: <FaRupeeSign />, path: "/pay-fee" },
+     { label: "Mess Fee", icon: <FaUtensils />, path: "/mess-fee" },
+     { label: "Canteen Fee", icon: <FaCoffee />, path: "/canteen-fee" },
+     { label: "Reports", icon: <FaChartLine />, path: "/admin/reports" },
+     { label: "Function", icon: <FaClipboardList />, path: "/functions" },
+     { label: "Pending Complain", icon: <FaExclamationTriangle />, path: "/admin/pending-complaint" },
+     { label: "Setting", icon: <FaCog />, path: "/student-setting" },
+   ];
 
   const handleMenuClick = (label, path) => {
     setActiveMenu(label);
@@ -324,14 +324,16 @@ export default function MessFeeStudent() {
   );
 }
 
-// ==================== MESS FEE CONTENT COMPONENT (UPDATED) ====================
+// ==================== MESS FEE CONTENT COMPONENT (UPDATED WITH SEARCH) ====================
 function MessFeeContent({ studentInfo, isLoggedIn }) {
   const [phone, setPhone] = useState("");
   const [fees, setFees] = useState([]);
+  const [filteredFees, setFilteredFees] = useState([]);
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [autoLoaded, setAutoLoaded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Auto-load data if student is already logged in from sign-in page
   useEffect(() => {
@@ -362,6 +364,25 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
     loadStudentData();
   }, [isLoggedIn, studentInfo, autoLoaded]);
 
+  // Filter fees based on search term
+  useEffect(() => {
+    if (fees.length > 0) {
+      const filtered = fees.filter(record => {
+        if (!searchTerm) return true;
+        
+        const term = searchTerm.toLowerCase();
+        return (
+          record.month?.toLowerCase().includes(term) ||
+          record.year?.toString().includes(term) ||
+          record.receiptNo?.toLowerCase().includes(term)
+        );
+      });
+      setFilteredFees(filtered);
+    } else {
+      setFilteredFees(fees);
+    }
+  }, [fees, searchTerm]);
+
   const fetchStudentData = async (phoneNumber) => {
     setError("");
     try {
@@ -374,6 +395,7 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
         `http://localhost:5000/api/students/${studentRes.data._id}/mess-fees`
       );
       setFees(feeRes.data);
+      setFilteredFees(feeRes.data);
 
     } catch (err) {
       console.error("Auto-load error:", err);
@@ -395,6 +417,7 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
         `http://localhost:5000/api/students/${studentId}/mess-fees`
       );
       setFees(feeRes.data);
+      setFilteredFees(feeRes.data);
 
     } catch (err) {
       console.error("Auto-load by ID error:", err);
@@ -426,6 +449,7 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
         `http://localhost:5000/api/students/${studentRes.data._id}/mess-fees`
       );
       setFees(feeRes.data);
+      setFilteredFees(feeRes.data);
 
     } catch (err) {
       console.error("Search error:", err);
@@ -435,13 +459,18 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
     }
   };
 
-  const totalRecords = fees.length;
-  const totalAmount = fees.reduce((sum, record) => sum + (record.totalAmount || 0), 0);
-  const totalPaid = fees.reduce((sum, record) => sum + (record.paidAmount || 0), 0);
-  const totalDue = fees.reduce((sum, record) => sum + (record.dueAmount || 0), 0);
-  const paidRecords = fees.filter(record => record.status === "Paid").length;
-  const pendingRecords = fees.filter(record => record.status === "Pending").length;
-  const partialRecords = fees.filter(record => record.status === "Partial").length;
+  const handleTableSearch = (e) => {
+    e.preventDefault();
+    // The filtering is already handled by the useEffect
+  };
+
+  const totalRecords = filteredFees.length;
+  const totalAmount = filteredFees.reduce((sum, record) => sum + (record.totalAmount || 0), 0);
+  const totalPaid = filteredFees.reduce((sum, record) => sum + (record.paidAmount || 0), 0);
+  const totalDue = filteredFees.reduce((sum, record) => sum + (record.dueAmount || 0), 0);
+  const paidRecords = filteredFees.filter(record => record.status === "Paid").length;
+  const pendingRecords = filteredFees.filter(record => record.status === "Pending").length;
+  const partialRecords = filteredFees.filter(record => record.status === "Partial").length;
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -455,14 +484,14 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
   const handlePrint = () => window.print();
 
   const handleDownload = () => {
-    if (fees.length === 0) {
+    if (filteredFees.length === 0) {
       alert("No data to download");
       return;
     }
     
     const csvContent = "data:text/csv;charset=utf-8," + 
       "Month,Year,Total Amount,Paid Amount,Due Amount,Payment Date,Payment Method,Status,Receipt No,Remarks\n" +
-      fees.map(row => 
+      filteredFees.map(row => 
         `${row.month},${row.year},${row.totalAmount},${row.paidAmount},${row.dueAmount},"${row.paymentDate ? new Date(row.paymentDate).toLocaleDateString() : 'N/A'}",${row.paymentMethod},${row.status},${row.receiptNo || 'N/A'},"${row.remarks || ''}"`
       ).join("\n");
     
@@ -579,6 +608,32 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
                 </div>
               </div>
 
+              {/* Table Search - EXACTLY AS SHOWN IN IMAGE */}
+              <div className="bg-white rounded-xl shadow p-4">
+                <form onSubmit={handleTableSearch} className="flex gap-3">
+                  <div className="flex-1 relative">
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by month, year, or receipt number..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center space-x-2"
+                  >
+                    <FaSearch />
+                    <span>Search</span>
+                  </button>
+                </form>
+                <p className="text-sm text-gray-500 mt-2">
+                  Showing records for: <span className="font-semibold">{student?.name}</span> • Phone: <span className="font-semibold">{student?.phone}</span>
+                </p>
+              </div>
+
               <div className="bg-white rounded-xl shadow overflow-hidden">
                 <div className="p-6 border-b">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -608,7 +663,7 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {fees.map((record) => (
+                      {filteredFees.map((record) => (
                         <tr key={record._id} className="border-t hover:bg-gray-50">
                           <td className="py-3 px-4">{record.month} {record.year}</td>
                           <td className="py-3 px-4 font-bold">₹{record.totalAmount?.toLocaleString()}</td>
@@ -623,6 +678,13 @@ function MessFeeContent({ studentInfo, isLoggedIn }) {
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Show count of filtered results */}
+                {searchTerm && (
+                  <div className="p-3 bg-gray-50 border-t text-sm text-gray-600">
+                    Found {filteredFees.length} record{filteredFees.length !== 1 ? 's' : ''} matching "{searchTerm}"
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -1323,14 +1385,16 @@ function PayFeeContent({ studentInfo, isLoggedIn }) {
   );
 }
 
-// ==================== CANTEEN FEE CONTENT COMPONENT (UPDATED) ====================
+// ==================== CANTEEN FEE CONTENT COMPONENT (UPDATED WITH SEARCH) ====================
 function CanteenFeeContent({ studentInfo, isLoggedIn }) {
   const [phone, setPhone] = useState("");
   const [fees, setFees] = useState([]);
+  const [filteredFees, setFilteredFees] = useState([]);
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [autoLoaded, setAutoLoaded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Auto-load data if student is already logged in from sign-in page
   useEffect(() => {
@@ -1354,12 +1418,32 @@ function CanteenFeeContent({ studentInfo, isLoggedIn }) {
     loadStudentData();
   }, [isLoggedIn, studentInfo, autoLoaded]);
 
+  // Filter fees based on search term
+  useEffect(() => {
+    if (fees.length > 0) {
+      const filtered = fees.filter(record => {
+        if (!searchTerm) return true;
+        
+        const term = searchTerm.toLowerCase();
+        return (
+          record.month?.toLowerCase().includes(term) ||
+          record.year?.toString().includes(term) ||
+          record.receiptNo?.toLowerCase().includes(term)
+        );
+      });
+      setFilteredFees(filtered);
+    } else {
+      setFilteredFees(fees);
+    }
+  }, [fees, searchTerm]);
+
   const fetchStudentData = async (phoneNumber) => {
     try {
       const studentRes = await axios.get(`http://localhost:5000/api/students/phone/${phoneNumber}`);
       setStudent(studentRes.data);
       const feeRes = await axios.get(`http://localhost:5000/api/students/${studentRes.data._id}/canteen-fees`);
       setFees(feeRes.data);
+      setFilteredFees(feeRes.data);
     } catch (err) {
       setError("Could not load canteen fee data automatically");
     } finally {
@@ -1379,14 +1463,20 @@ function CanteenFeeContent({ studentInfo, isLoggedIn }) {
       setStudent(studentRes.data);
       const feeRes = await axios.get(`http://localhost:5000/api/students/${studentRes.data._id}/canteen-fees`);
       setFees(feeRes.data);
+      setFilteredFees(feeRes.data);
     } catch (err) {
       setError("Student not found or no records available");
     } finally { setLoading(false); }
   };
 
-  const totalAmount = fees.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
-  const totalPaid = fees.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
-  const totalDue = fees.reduce((sum, r) => sum + (r.dueAmount || 0), 0);
+  const handleTableSearch = (e) => {
+    e.preventDefault();
+    // Filtering is handled by useEffect
+  };
+
+  const totalAmount = filteredFees.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+  const totalPaid = filteredFees.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+  const totalDue = filteredFees.reduce((sum, r) => sum + (r.dueAmount || 0), 0);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -1439,32 +1529,82 @@ function CanteenFeeContent({ studentInfo, isLoggedIn }) {
               </div>
             </div>
           </div>
+          
           {fees.length > 0 ? (
-            <div className="bg-white rounded-xl shadow overflow-hidden">
-              <div className="p-4 bg-gray-50 border-b">
-                <div className="flex justify-between">
-                  <span>Total Amount: ₹{totalAmount.toLocaleString()}</span>
-                  <span>Paid: ₹{totalPaid.toLocaleString()}</span>
-                  <span>Due: ₹{totalDue.toLocaleString()}</span>
+            <>
+              {/* Table Search - EXACTLY AS SHOWN IN IMAGE */}
+              <div className="bg-white rounded-xl shadow p-4">
+                <form onSubmit={handleTableSearch} className="flex gap-3">
+                  <div className="flex-1 relative">
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by month, year, or receipt number..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center space-x-2"
+                  >
+                    <FaSearch />
+                    <span>Search</span>
+                  </button>
+                </form>
+                <p className="text-sm text-gray-500 mt-2">
+                  Showing records for: <span className="font-semibold">{student?.name}</span> • Phone: <span className="font-semibold">{student?.phone}</span>
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow overflow-hidden">
+                <div className="p-4 bg-gray-50 border-b">
+                  <div className="flex justify-between">
+                    <span>Total Amount: ₹{totalAmount.toLocaleString()}</span>
+                    <span>Paid: ₹{totalPaid.toLocaleString()}</span>
+                    <span>Due: ₹{totalDue.toLocaleString()}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50"><tr><th className="p-3">Month/Year</th><th>Total</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {fees.map((record) => (
-                      <tr key={record._id} className="border-t">
-                        <td className="p-3">{record.month} {record.year}</td>
-                        <td>₹{record.totalAmount}</td>
-                        <td>₹{record.paidAmount}</td>
-                        <td>₹{record.dueAmount}</td>
-                        <td><span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(record.status)}`}>{record.status}</span></td>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="p-3 text-left">Month/Year</th>
+                        <th className="p-3 text-left">Total</th>
+                        <th className="p-3 text-left">Paid</th>
+                        <th className="p-3 text-left">Due</th>
+                        <th className="p-3 text-left">Status</th>
+                        <th className="p-3 text-left">Receipt</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredFees.map((record) => (
+                        <tr key={record._id} className="border-t">
+                          <td className="p-3">{record.month} {record.year}</td>
+                          <td className="p-3">₹{record.totalAmount}</td>
+                          <td className="p-3 text-green-600">₹{record.paidAmount}</td>
+                          <td className="p-3 text-red-600">₹{record.dueAmount}</td>
+                          <td className="p-3">
+                            <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(record.status)}`}>
+                              {record.status}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-blue-600">{record.receiptNo || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Show count of filtered results */}
+                {searchTerm && (
+                  <div className="p-3 bg-gray-50 border-t text-sm text-gray-600">
+                    Found {filteredFees.length} record{filteredFees.length !== 1 ? 's' : ''} matching "{searchTerm}"
+                  </div>
+                )}
               </div>
-            </div>
+            </>
           ) : (
             <div className="bg-white rounded-xl shadow p-8 text-center">
               <FaCoffee className="text-4xl text-gray-400 mx-auto mb-4" />
