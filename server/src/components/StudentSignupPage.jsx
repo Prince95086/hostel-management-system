@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaUser,
@@ -18,7 +18,8 @@ import {
   FaIdBadge,
   FaExclamationTriangle,
   FaEye,
-  FaEyeSlash
+  FaEyeSlash,
+  FaSpinner
 } from "react-icons/fa";
 import { GiGraduateCap } from "react-icons/gi";
 import { toast, ToastContainer } from "react-toastify";
@@ -47,10 +48,143 @@ const StudentSignupPage = () => {
   const [preview, setPreview] = useState({ photo: "", signature: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [rollNoAvailable, setRollNoAvailable] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Availability states
+  const [availability, setAvailability] = useState({
+    email: { available: null, checking: false, message: "" },
+    phone: { available: null, checking: false, message: "" },
+    rollNo: { available: null, checking: false, message: "" }
+  });
 
   const API_BASE_URL = "http://localhost:5000/api";
+
+  // Get verified email from storage on component mount
+  useEffect(() => {
+    const verifiedEmail = localStorage.getItem("verifiedEmail") || sessionStorage.getItem("verifiedEmail");
+    if (verifiedEmail) {
+      setFormData(prev => ({ ...prev, email: verifiedEmail }));
+      // Check email availability immediately when component mounts
+      if (verifiedEmail) {
+        checkFieldAvailability('email', verifiedEmail);
+      }
+    } else {
+      // If no verified email found, redirect back to email verification
+      toast.warning("Please verify your email first");
+      navigate("/emailverify");
+    }
+  }, [navigate]);
+
+  // Check field availability in database
+  const checkFieldAvailability = async (field, value) => {
+    // Don't check if value is empty
+    if (!value) return;
+
+    // Set minimum length requirements
+    if (field === 'phone' && value.length < 10) return;
+    if (field === 'rollNo' && value.length < 4) return;
+    if (field === 'email' && value.length < 5) return;
+
+    setAvailability(prev => ({
+      ...prev,
+      [field]: { ...prev[field], checking: true, message: "" }
+    }));
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/students/check-field`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ field, value })
+      });
+
+      const data = await response.json();
+
+      if (data.exists) {
+        setAvailability(prev => ({
+          ...prev,
+          [field]: {
+            available: false,
+            checking: false,
+            message: `❌ This ${field} is already registered`
+          }
+        }));
+        
+        // Set error for the field
+        setErrors(prev => ({
+          ...prev,
+          [field]: `This ${field} is already registered`
+        }));
+
+        // Show toast notification immediately
+        toast.error(`❌ This ${field} is already registered!`, {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      } else {
+        setAvailability(prev => ({
+          ...prev,
+          [field]: {
+            available: true,
+            checking: false,
+            message: `✅ This ${field} is available`
+          }
+        }));
+        
+        // Clear error if it exists
+        if (errors[field]) {
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[field];
+            return newErrors;
+          });
+        }
+
+        // Show success toast for available field
+        toast.success(`✅ This ${field} is available!`, {
+          position: "top-right",
+          autoClose: 2000,
+        });
+      }
+    } catch (error) {
+      console.error(`Error checking ${field}:`, error);
+      setAvailability(prev => ({
+        ...prev,
+        [field]: {
+          available: null,
+          checking: false,
+          message: "Error checking availability"
+        }
+      }));
+    }
+  };
+
+  // Immediate check for phone as user types
+  useEffect(() => {
+    if (formData.phone && formData.phone.length === 10) {
+      checkFieldAvailability('phone', formData.phone);
+    } else if (formData.phone && formData.phone.length < 10) {
+      // Reset availability if phone is incomplete
+      setAvailability(prev => ({
+        ...prev,
+        phone: { available: null, checking: false, message: "" }
+      }));
+    }
+  }, [formData.phone]);
+
+  // Immediate check for rollNo as user types
+  useEffect(() => {
+    if (formData.rollNo && formData.rollNo.length === 4) {
+      checkFieldAvailability('rollNo', formData.rollNo);
+    } else if (formData.rollNo && formData.rollNo.length < 4) {
+      // Reset availability if rollNo is incomplete
+      setAvailability(prev => ({
+        ...prev,
+        rollNo: { available: null, checking: false, message: "" }
+      }));
+    }
+  }, [formData.rollNo]);
 
   // Show loading toast
   const showLoadingToast = (message) => {
@@ -103,26 +237,31 @@ const StudentSignupPage = () => {
       };
       reader.readAsDataURL(file);
     } else {
+      // Validation for roomNo and rollNo
       if (name === "roomNo" && value.length > 3) return;
       if (name === "rollNo" && value.length > 4) return;
       if ((name === "roomNo" || name === "rollNo") && !/^\d*$/.test(value)) return;
 
       setFormData({ ...formData, [name]: value });
 
-      // Check roll number availability
-      if (name === "rollNo" && value.length === 4) {
-        await checkRollNoAvailability(value);
+      // Clear error for this field as user is typing
+      if (errors[name]) {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
       }
-    }
-  };
 
-  const checkRollNoAvailability = async (rollNo) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/students/check-availability/${rollNo}`);
-      const data = await response.json();
-      setRollNoAvailable(data.available);
-    } catch (error) {
-      console.error("Error checking roll number:", error);
+      // For phone and rollNo, reset availability when user starts typing again
+      if (name === 'phone' || name === 'rollNo') {
+        if (value.length < (name === 'phone' ? 10 : 4)) {
+          setAvailability(prev => ({
+            ...prev,
+            [name]: { available: null, checking: false, message: "" }
+          }));
+        }
+      }
     }
   };
 
@@ -131,14 +270,26 @@ const StudentSignupPage = () => {
     
     if (step === 1) {
       if (!formData.name.trim()) newErrors.name = "Name is required";
-      if (!formData.email.trim()) newErrors.email = "Email is required";
+      
+      // Email validation
+      if (!formData.email) newErrors.email = "Email is required";
       else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
+      else if (availability.email.available === false) {
+        newErrors.email = "Email already registered";
+      }
+      
+      // Password validation
       if (!formData.password.trim()) newErrors.password = "Password is required";
       else if (formData.password.length < 8) newErrors.password = "Password must be at least 8 characters";
       else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) 
         newErrors.password = "Must include uppercase, lowercase, and number";
+      
+      // Phone validation
       if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
       else if (!/^[0-9]{10}$/.test(formData.phone)) newErrors.phone = "Enter valid 10-digit number";
+      else if (availability.phone.available === false) {
+        newErrors.phone = "Phone number already registered";
+      }
     }
     
     if (step === 2) {
@@ -153,9 +304,13 @@ const StudentSignupPage = () => {
       if (!formData.block.trim()) newErrors.block = "Block is required";
       if (!formData.roomNo.trim()) newErrors.roomNo = "Room No is required";
       else if (!/^[0-9]{1,3}$/.test(formData.roomNo)) newErrors.roomNo = "Max 3 digits";
+      
+      // Roll number validation
       if (!formData.rollNo.trim()) newErrors.rollNo = "Roll No is required";
       else if (!/^[0-9]{1,4}$/.test(formData.rollNo)) newErrors.rollNo = "Max 4 digits";
-      else if (rollNoAvailable === false) newErrors.rollNo = "Roll number already exists";
+      else if (availability.rollNo.available === false) {
+        newErrors.rollNo = "Roll number already registered";
+      }
     }
     
     if (step === 4) {
@@ -182,7 +337,22 @@ const StudentSignupPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Final validation before submit
     if (!validateStep(4)) {
+      return;
+    }
+
+    // Check if any fields are still being checked
+    if (availability.email.checking || availability.phone.checking || availability.rollNo.checking) {
+      showErrorToast("Please wait while we verify your information");
+      return;
+    }
+
+    // Check if any fields are unavailable
+    if (availability.email.available === false || 
+        availability.phone.available === false || 
+        availability.rollNo.available === false) {
+      showErrorToast("Please fix the errors before submitting");
       return;
     }
 
@@ -226,6 +396,10 @@ const StudentSignupPage = () => {
       // Show success toast
       showSuccessToast(`🎉 Registration Successful! Welcome ${data.data.name}`);
       
+      // Clear verified email from storage
+      localStorage.removeItem("verifiedEmail");
+      sessionStorage.removeItem("verifiedEmail");
+      
       // Reset form
       setFormData({
         name: "",
@@ -246,10 +420,14 @@ const StudentSignupPage = () => {
       
       setPreview({ photo: "", signature: "" });
       setCurrentStep(1);
-      setRollNoAvailable(null);
       setShowPassword(false);
+      setAvailability({
+        email: { available: null, checking: false, message: "" },
+        phone: { available: null, checking: false, message: "" },
+        rollNo: { available: null, checking: false, message: "" }
+      });
 
-      // Redirect to "/" after 3 seconds
+      // Redirect to sign in page after 3 seconds
       setTimeout(() => {
         navigate("/");
       }, 3000);
@@ -289,6 +467,71 @@ const StudentSignupPage = () => {
   const iconStyle = "absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl";
   const labelClass = "block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide";
 
+  // Helper function to render field status
+  const renderFieldStatus = (field) => {
+    const status = availability[field];
+    
+    if (status.checking) {
+      return (
+        <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+          <FaSpinner className="animate-spin text-blue-500" />
+        </div>
+      );
+    }
+    
+    if (status.available === true) {
+      return (
+        <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+          <FaCheck className="text-green-500" />
+        </div>
+      );
+    }
+    
+    if (status.available === false) {
+      return (
+        <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+          <FaExclamationTriangle className="text-red-500" />
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  // Helper function to render field message
+  const renderFieldMessage = (field) => {
+    const status = availability[field];
+    
+    if (status.checking) {
+      return (
+        <p className="text-blue-500 text-sm mt-2 flex items-center gap-2">
+          <FaSpinner className="animate-spin" />
+          Checking availability...
+        </p>
+      );
+    }
+    
+    if (status.available === true) {
+      return (
+        <p className="text-green-500 text-sm mt-2 flex items-center gap-2">
+          <FaCheck />
+          {status.message}
+        </p>
+      );
+    }
+    
+    if (status.available === false) {
+      return (
+        <p className="text-red-500 text-sm mt-2 flex items-center gap-2 font-semibold">
+          <FaExclamationTriangle />
+          {status.message}
+        </p>
+      );
+    }
+    
+    return null;
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -303,9 +546,11 @@ const StudentSignupPage = () => {
             </div>
 
             <div className="grid gap-6">
+              {/* Name Field */}
               <div className="relative">
                 <label className={labelClass}>Full Name</label>
                 <FaUser className={iconStyle} />
+                <br />
                 <input
                   type="text"
                   name="name"
@@ -314,30 +559,59 @@ const StudentSignupPage = () => {
                   onChange={handleChange}
                   className={inputClass}
                 />
-                {errors.name && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.name}
-                </p>}
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.name}
+                  </p>
+                )}
               </div>
 
+              {/* Email Field - Read Only with immediate check */}
               <div className="relative">
-                <label className={labelClass}>Email Address</label>
+                <label className={labelClass}>Email Address (Verified)</label>
                 <FaEnvelope className={iconStyle} />
+                 <br />
                 <input
                   type="email"
                   name="email"
-                  placeholder="your.email@example.com"
+                  placeholder="Verified email"
                   value={formData.email}
-                  onChange={handleChange}
-                  className={inputClass}
+                  readOnly
+                  className={`${inputClass} ${availability.email.available === false ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-200 text-green-700'} cursor-not-allowed`}
                 />
-                {errors.email && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.email}
-                </p>}
+                {availability.email.checking ? (
+                  <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+                    <FaSpinner className="animate-spin text-blue-500" />
+                  </div>
+                ) : availability.email.available === false ? (
+                  <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+                    <FaExclamationTriangle className="text-red-500" />
+                  </div>
+                ) : (
+                  <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+                    <FaCheck className="text-green-500" />
+                  </div>
+                )}
+                {availability.email.available === false && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2 font-semibold">
+                    <FaExclamationTriangle /> {availability.email.message || "❌ This email is already registered"}
+                  </p>
+                )}
+                {availability.email.available === true && (
+                  <p className="text-green-500 text-sm mt-2 flex items-center gap-2">
+                    <FaCheck /> {availability.email.message || "✅ Email is available"}
+                  </p>
+                )}
               </div>
 
+              {/* Password Field */}
               <div className="relative">
+                
                 <label className={labelClass}>Create Password</label>
-                <FaLock className={iconStyle} />
+                
+               
+                
+                  
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
@@ -353,9 +627,11 @@ const StudentSignupPage = () => {
                 >
                   {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
-                {errors.password && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.password}
-                </p>}
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.password}
+                  </p>
+                )}
                 {!errors.password && formData.password && (
                   <div className="mt-2">
                     <div className="flex items-center gap-2 mb-1">
@@ -370,20 +646,35 @@ const StudentSignupPage = () => {
                 )}
               </div>
 
+              {/* Phone Field with Immediate Availability Check */}
               <div className="relative">
                 <label className={labelClass}>Phone Number</label>
                 <FaPhone className={iconStyle} />
+                 <br />
                 <input
                   type="text"
                   name="phone"
                   placeholder="10-digit mobile number"
                   value={formData.phone}
                   onChange={handleChange}
-                  className={inputClass}
+                  className={`${inputClass} ${
+                    availability.phone.available === false ? 'border-red-500 bg-red-50' : 
+                    availability.phone.available === true ? 'border-green-500 bg-green-50' : ''
+                  }`}
+                  maxLength={10}
                 />
-                {errors.phone && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.phone}
-                </p>}
+                {renderFieldStatus('phone')}
+                {errors.phone && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.phone}
+                  </p>
+                )}
+                {!errors.phone && renderFieldMessage('phone')}
+                {formData.phone && formData.phone.length < 10 && (
+                  <p className="text-gray-500 text-sm mt-2">
+                    {10 - formData.phone.length} digits remaining
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -404,6 +695,7 @@ const StudentSignupPage = () => {
               <div className="relative">
                 <label className={labelClass}>Academic Year</label>
                 <FaUniversity className={iconStyle} />
+                <br />
                 <select
                   name="year"
                   value={formData.year}
@@ -417,14 +709,17 @@ const StudentSignupPage = () => {
                     </option>
                   ))}
                 </select>
-                {errors.year && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.year}
-                </p>}
+                {errors.year && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.year}
+                  </p>
+                )}
               </div>
 
               <div className="relative">
                 <label className={labelClass}>Department</label>
                 <FaBook className={iconStyle} />
+                <br />
                 <input
                   type="text"
                   name="dept"
@@ -433,14 +728,17 @@ const StudentSignupPage = () => {
                   onChange={handleChange}
                   className={inputClass}
                 />
-                {errors.dept && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.dept}
-                </p>}
+                {errors.dept && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.dept}
+                  </p>
+                )}
               </div>
 
               <div className="relative">
                 <label className={labelClass}>Branch</label>
                 <FaBook className={iconStyle} />
+                <br />
                 <input
                   type="text"
                   name="branch"
@@ -449,14 +747,17 @@ const StudentSignupPage = () => {
                   onChange={handleChange}
                   className={inputClass}
                 />
-                {errors.branch && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.branch}
-                </p>}
+                {errors.branch && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.branch}
+                  </p>
+                )}
               </div>
 
               <div className="relative">
                 <label className={labelClass}>Category</label>
                 <FaUserGraduate className={iconStyle} />
+                <br />
                 <select
                   name="category"
                   value={formData.category}
@@ -470,9 +771,11 @@ const StudentSignupPage = () => {
                   <option value="ST">ST</option>
                   <option value="OTHER">Other</option>
                 </select>
-                {errors.category && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.category}
-                </p>}
+                {errors.category && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.category}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -493,6 +796,7 @@ const StudentSignupPage = () => {
               <div className="relative">
                 <label className={labelClass}>Select Hostel</label>
                 <FaBuilding className={iconStyle} />
+                 <br />
                 <select
                   name="hostel"
                   value={formData.hostel}
@@ -515,14 +819,17 @@ const StudentSignupPage = () => {
                     ))}
                   </optgroup>
                 </select>
-                {errors.hostel && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.hostel}
-                </p>}
+                {errors.hostel && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.hostel}
+                  </p>
+                )}
               </div>
 
               <div className="relative">
                 <label className={labelClass}>Hostel Block</label>
                 <FaBuilding className={iconStyle} />
+                 <br />
                 <select
                   name="block"
                   value={formData.block}
@@ -538,14 +845,17 @@ const StudentSignupPage = () => {
                   <option value="6">Block 6</option>
                   <option value="7">Block 7</option>
                 </select>
-                {errors.block && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.block}
-                </p>}
+                {errors.block && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.block}
+                  </p>
+                )}
               </div>
 
               <div className="relative">
                 <label className={labelClass}>Room Number</label>
                 <FaDoorClosed className={iconStyle} />
+                 <br />
                 <input
                   type="text"
                   name="roomNo"
@@ -555,36 +865,41 @@ const StudentSignupPage = () => {
                   className={inputClass}
                   maxLength={3}
                 />
-                {errors.roomNo && <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                  <FaExclamationTriangle /> {errors.roomNo}
-                </p>}
+                {errors.roomNo && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
+                    <FaExclamationTriangle /> {errors.roomNo}
+                  </p>
+                )}
               </div>
 
+              {/* Roll Number Field with Immediate Availability Check */}
               <div className="relative">
                 <label className={labelClass}>Hostel Roll No</label>
                 <FaIdCard className={iconStyle} />
+                 <br />
+                  <br />
                 <input
                   type="text"
                   name="rollNo"
                   placeholder="4-digit roll number"
                   value={formData.rollNo}
                   onChange={handleChange}
-                  className={inputClass}
+                  className={`${inputClass} ${
+                    availability.rollNo.available === false ? 'border-red-500 bg-red-50' : 
+                    availability.rollNo.available === true ? 'border-green-500 bg-green-50' : ''
+                  }`}
                   maxLength={4}
                 />
+                {renderFieldStatus('rollNo')}
                 {errors.rollNo && (
                   <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
                     <FaExclamationTriangle /> {errors.rollNo}
                   </p>
                 )}
-                {rollNoAvailable === true && formData.rollNo.length === 4 && (
-                  <p className="text-green-500 text-sm mt-2 flex items-center gap-2">
-                    <FaCheck /> Roll number available
-                  </p>
-                )}
-                {rollNoAvailable === false && (
-                  <p className="text-red-500 text-sm mt-2 flex items-center gap-2">
-                    <FaExclamationTriangle /> Roll number already registered
+                {!errors.rollNo && renderFieldMessage('rollNo')}
+                {formData.rollNo && formData.rollNo.length < 4 && (
+                  <p className="text-gray-500 text-sm mt-2">
+                    {4 - formData.rollNo.length} digits remaining
                   </p>
                 )}
               </div>
@@ -641,9 +956,11 @@ const StudentSignupPage = () => {
                     />
                   </label>
                 </div>
-                {errors.photo && <p className="text-red-500 text-sm mt-3 text-center flex items-center justify-center gap-2">
-                  <FaExclamationTriangle /> {errors.photo}
-                </p>}
+                {errors.photo && (
+                  <p className="text-red-500 text-sm mt-3 text-center flex items-center justify-center gap-2">
+                    <FaExclamationTriangle /> {errors.photo}
+                  </p>
+                )}
               </div>
 
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-3xl border-2 border-dashed border-green-200">
@@ -683,9 +1000,11 @@ const StudentSignupPage = () => {
                     />
                   </label>
                 </div>
-                {errors.signature && <p className="text-red-500 text-sm mt-3 text-center flex items-center justify-center gap-2">
-                  <FaExclamationTriangle /> {errors.signature}
-                </p>}
+                {errors.signature && (
+                  <p className="text-red-500 text-sm mt-3 text-center flex items-center justify-center gap-2">
+                    <FaExclamationTriangle /> {errors.signature}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -718,12 +1037,31 @@ const StudentSignupPage = () => {
           <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-blue-600 to-purple-700 rounded-3xl shadow-2xl mb-6">
             <GiGraduateCap className="text-white text-4xl" />
           </div>
-          <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-4">
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-blue-500  mb-4">
             Student Registration
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
             Join Panjab University Hostel - Complete your registration in simple steps
           </p>
+          {formData.email && (
+            <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full ${
+              availability.email.available === false 
+                ? 'bg-red-100 text-red-700' 
+                : 'bg-green-100 text-green-700'
+            }`}>
+              {availability.email.available === false ? (
+                <FaExclamationTriangle className="text-red-600" />
+              ) : (
+                <FaCheck className="text-green-600" />
+              )}
+              <span className="font-medium">
+                {availability.email.available === false 
+                  ? `❌ Email already registered: ${formData.email}`
+                  : `✅ Verified: ${formData.email}`
+                }
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Progress Steps */}
@@ -782,7 +1120,12 @@ const StudentSignupPage = () => {
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2 cursor-pointer"
+                    disabled={availability.email.available === false || availability.phone.available === false}
+                    className={`px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2 ${
+                      availability.email.available === false || availability.phone.available === false
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'cursor-pointer'
+                    }`}
                   >
                     Next Step
                     <FaCheck />
@@ -790,15 +1133,27 @@ const StudentSignupPage = () => {
                 ) : (
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || availability.email.checking || availability.phone.checking || availability.rollNo.checking || availability.email.available === false || availability.phone.available === false || availability.rollNo.available === false}
                     className={`px-12 py-4 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-2xl font-semibold shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2 ${
-                      isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl cursor-pointer'
+                      isSubmitting || availability.email.checking || availability.phone.checking || availability.rollNo.checking || availability.email.available === false || availability.phone.available === false || availability.rollNo.available === false
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'hover:shadow-xl cursor-pointer'
                     }`}
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <FaSpinner className="animate-spin" />
                         Processing...
+                      </>
+                    ) : availability.email.checking || availability.phone.checking || availability.rollNo.checking ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        Verifying...
+                      </>
+                    ) : availability.email.available === false || availability.phone.available === false || availability.rollNo.available === false ? (
+                      <>
+                        <FaExclamationTriangle />
+                        Fix Errors
                       </>
                     ) : (
                       <>

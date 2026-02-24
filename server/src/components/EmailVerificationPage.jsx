@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaEnvelope,
   FaShieldAlt,
@@ -12,6 +12,7 @@ import {
 const API_BASE = "http://localhost:5000/api/auth";
 
 const EmailVerificationPage = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [inputCode, setInputCode] = useState("");
@@ -67,6 +68,11 @@ const EmailVerificationPage = () => {
       if (!res.ok) throw new Error(data.error);
 
       setVerified(true);
+      
+      // Store email in localStorage/sessionStorage for signup page
+      localStorage.setItem("verifiedEmail", email);
+      sessionStorage.setItem("verifiedEmail", email);
+      
     } catch (err) {
       setError(err.message || "Invalid verification code");
     } finally {
@@ -95,6 +101,11 @@ const EmailVerificationPage = () => {
     }
   };
 
+  /* ================= GO TO SIGNUP ================= */
+  const handleContinueToSignup = () => {
+    navigate("/studentsignup");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="max-w-md w-full relative z-10">
@@ -104,7 +115,7 @@ const EmailVerificationPage = () => {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-500 rounded-2xl shadow-2xl mb-6">
             <FaUniversity className="text-white text-3xl" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl font-bold bg-blue-500 bg-clip-text text-transparent mb-4">
             Verify Your Email
           </h1>
           <p className="text-gray-600 text-lg">
@@ -121,14 +132,14 @@ const EmailVerificationPage = () => {
             </div>
           )}
 
-          {/* STEP 1 */}
+          {/* STEP 1 - Email Input */}
           {!codeSent && !verified && (
             <form onSubmit={handleSendCode} className="space-y-6">
               <div className="relative">
                 <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="email"
-                  placeholder="Enter your university email"
+                  placeholder="Enter your email"
                   className="w-full pl-10 pr-4 py-4 border rounded-2xl focus:ring-2 focus:ring-blue-500"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -139,14 +150,14 @@ const EmailVerificationPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-green-500 text-white py-4 rounded-2xl font-semibold"
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-2xl font-semibold hover:shadow-lg transition-all duration-300"
               >
                 {isLoading ? "Sending..." : "Send Verification Code"}
               </button>
             </form>
           )}
 
-          {/* STEP 2 */}
+          {/* STEP 2 - OTP Verification */}
           {codeSent && !verified && (
             <form onSubmit={handleVerifyCode} className="space-y-6">
               <div className="text-center">
@@ -182,7 +193,7 @@ const EmailVerificationPage = () => {
               <button
                 type="submit"
                 disabled={isLoading || inputCode.length !== 6}
-                className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-semibold"
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-4 rounded-2xl font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50"
               >
                 {isLoading ? "Verifying..." : "Verify Code"}
               </button>
@@ -191,32 +202,47 @@ const EmailVerificationPage = () => {
                 type="button"
                 onClick={handleResendCode}
                 disabled={isLoading}
-                className="w-full text-blue-600 text-sm"
+                className="w-full text-blue-600 text-sm hover:underline"
               >
-                Didn’t receive code? Resend
+                Didn't receive code? Resend
               </button>
             </form>
           )}
 
-          {/* STEP 3 */}
+          {/* STEP 3 - Verified Success */}
           {verified && (
             <div className="text-center space-y-6">
-              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto animate-bounce">
                 <FaCheckCircle className="text-white text-3xl" />
               </div>
               <h3 className="text-2xl font-bold text-gray-800">
                 Email Verified!
               </h3>
-              <Link
-                to="/studentsignup"
-                className="block w-full bg-green-500 text-white py-4 rounded-2xl font-semibold"
+              <p className="text-gray-600">
+                Your email <span className="font-semibold text-blue-600">{email}</span> has been successfully verified.
+              </p>
+              <button
+                onClick={handleContinueToSignup}
+                className="block w-full bg-gradient-to-r from-green-500 to-teal-600 text-white py-4 rounded-2xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105"
               >
                 Continue to Sign Up
                 <FaArrowRight className="inline ml-2" />
-              </Link>
+              </button>
             </div>
           )}
         </div>
+
+        {/* Help Text */}
+        {!verified && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-500">
+              Already have an account?{" "}
+              <Link to="/signin-options" className="text-blue-600 hover:underline font-semibold">
+                Sign In
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
