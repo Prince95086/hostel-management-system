@@ -39,26 +39,32 @@ Nodemailer for email/OTP
 express-validator for request validation
 rate-limiter-flexible for basic abuse protection
 
-## 📁 Project Structure
+## 📂 Project Structure
+
+```text
 hostel-management-system/
-├── src/ (root)              # Primary React frontend (Vite)
+├── src/                          # Primary React frontend (Vite)
 │   ├── Student.jsx
-│   ├── Dashbord.jsx
+│   ├── Dashboard.jsx
 │   ├── MessFeeRecord.jsx
 │   ├── CanteenFeeRecord.jsx
 │   ├── ViewStudent.jsx
 │   └── Studentdatashow.jsx
-├── server/                  # Secondary React frontend (Vite) — e.g. admin/worker portal
+│
+├── server/                       # Secondary React frontend (Admin/Worker Portal)
 │   └── src/
-├── serverbackend/           # Express API backend
+│
+├── serverbackend/                # Express.js Backend
 │   ├── controllers/
-│   ├── models/              # Student, Worker, Payment, MessFee, CanteenFee, etc.
-│   ├── routes/               # REST endpoints
+│   ├── models/                   # Student, Worker, Payment, MessFee, CanteenFee, etc.
+│   ├── routes/                   # REST API Endpoints
 │   ├── middleware/
 │   ├── utils/
-│   ├── uploads/              # Uploaded files (photos/docs)
-│   └── server.js             # App entry point
+│   ├── uploads/                  # Uploaded photos and documents
+│   └── server.js                 # Application Entry Point
+│
 └── README.md
+```
 
 Note: This repo currently has two React frontends (/ and /server) alongside one backend (/serverbackend). You may want to clarify/rename these folders — e.g. frontend-student and frontend-admin — for easier onboarding.
 
