@@ -107,13 +107,6 @@ export default function AdminLayout() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <h2 className="text-2xl font-bold text-gray-800">Students Management</h2>
           <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-            <button 
-              onClick={() => navigate("/admin/add-student")}
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2"
-            >
-              <FaPlus />
-              <span>Add New Student</span>
-            </button>
             {isMobile && (
               <button 
                 onClick={() => setShowAllData(!showAllData)}
@@ -207,20 +200,6 @@ export default function AdminLayout() {
                         <td className="py-3 px-4">{student.rollNo}</td>
                         <td className="py-3 px-4">
                           <div className="flex space-x-2">
-                            <button 
-                              onClick={() => navigate(`/admin/student/${student._id}`)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
-                              title="View"
-                            >
-                              <FaEye />
-                            </button>
-                            <button 
-                              onClick={() => navigate(`/admin/edit-student/${student._id}`)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded" 
-                              title="Edit"
-                            >
-                              <FaEdit />
-                            </button>
                             <button
                               onClick={() => handleDeleteStudent(student._id)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded"
